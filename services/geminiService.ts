@@ -3,8 +3,7 @@ import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { HistoricalAggregates, AnalysisMode, StandardDocument } from '../types';
 import { getStandards, getTechnicianProfiles } from './storageService';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
+// BASE_SYSTEM_INSTRUCTION remains defined at module level for reuse.
 const BASE_SYSTEM_INSTRUCTION = `You are the Lead Auditor for a high-volume Honda Dealership.
 YOUR MISSION: Protect Dealership Gross Margin.
 STRATEGY:
@@ -17,6 +16,9 @@ export const analyzeInspection = async (
   history: HistoricalAggregates | null,
   mode: AnalysisMode
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
+  // Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key from the dialog.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
   try {
     const { vehicle, data } = currentCase;
     const standards = getStandards();
@@ -79,6 +81,9 @@ export const analyzeInspection = async (
 };
 
 export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
+  // Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key from the dialog.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -97,6 +102,9 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
 };
 
 export const extractVINFromImage = async (base64: string): Promise<any> => {
+  // Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key from the dialog.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',

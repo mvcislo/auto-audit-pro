@@ -73,3 +73,16 @@ export interface HistoricalAggregates {
   commonFailureCount: Record<string, number>;
   totalCases: number;
 }
+
+// Fixed: Global augmentation for window.aistudio to resolve TS2339 and modifier mismatch errors.
+// Using explicit AIStudio interface to match the existing environment's expected type and modifiers.
+declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
+  interface Window {
+    readonly aistudio: AIStudio;
+  }
+}
