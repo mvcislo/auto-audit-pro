@@ -75,3 +75,15 @@ export interface HistoricalAggregates {
   commonFailureCount: Record<string, number>;
   totalCases: number;
 }
+
+// Fixed: Defined AIStudio interface to match the environment's expected type and resolve Window property conflicts.
+export interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
+
+declare global {
+  interface Window {
+    aistudio: AIStudio;
+  }
+}

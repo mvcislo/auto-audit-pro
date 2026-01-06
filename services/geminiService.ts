@@ -3,8 +3,6 @@ import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { HistoricalAggregates, AnalysisMode, StandardDocument } from '../types';
 import { getStandards, getTechnicianProfiles, getBrand } from './storageService';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
 const getSystemInstruction = () => {
   const brand = getBrand();
   return `You are the Lead Auditor for a high-volume ${brand} Dealership.
@@ -21,6 +19,8 @@ export const analyzeInspection = async (
   mode: AnalysisMode
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
   try {
+    // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const { vehicle, data } = currentCase;
     const standards = getStandards();
     const techStats = getTechnicianProfiles().find(t => t.technicianName === data.technicianName);
@@ -86,6 +86,8 @@ export const analyzeInspection = async (
 };
 
 export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
+  // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   const brand = getBrand();
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -105,6 +107,8 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
 };
 
 export const extractVINFromImage = async (base64: string): Promise<any> => {
+  // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
