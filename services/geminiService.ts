@@ -2,8 +2,9 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { InspectionCase, HistoricalAggregates, AnalysisMode } from '../types';
 
-// The API Key is injected via Vite's 'define' config from the environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// The API Key is obtained exclusively from process.env.API_KEY.
+// TypeScript recognizes 'process' now because of the updated types and configuration.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
 const SYSTEM_INSTRUCTION = `You are the Lead Auditor for a high-volume Honda Dealership specializing in Ontario Safety Standards and HCUV.
 YOUR PHILOSOPHY:
