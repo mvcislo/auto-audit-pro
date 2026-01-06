@@ -44,7 +44,12 @@ const App: React.FC = () => {
       saveCase(newCase);
     } catch (error: any) {
       console.error("Audit Error:", error);
-      if (error.message?.includes('RATE_LIMIT')) {
+      // Fixed: Implement required error handling for missing API key/project as per Gemini API guidelines.
+      if (error.message?.includes('Requested entity was not found.')) {
+        if (window.aistudio?.openSelectKey) {
+          await window.aistudio.openSelectKey();
+        }
+      } else if (error.message?.includes('RATE_LIMIT')) {
         alert("⚠️ Usage Limit Reached:\n\nGemini Pro (Free Tier) only allows 2 audits per minute. Please wait about 45-60 seconds before trying again.");
       } else {
         alert(`Analysis failed: ${error.message || "Please check your network connection and API key."}`);

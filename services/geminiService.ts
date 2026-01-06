@@ -7,8 +7,10 @@ import { getStandards, getTechnicianProfiles } from './storageService';
 const BASE_SYSTEM_INSTRUCTION = `You are the Lead Auditor for a high-volume Honda Dealership.
 YOUR MISSION: Protect Dealership Gross Margin.
 STRATEGY:
+- Crucial: Compare the Appraiser's Intake Notes (visual observations) against the Tech's Quote. 
+- If the Appraiser noted "Tires look new" and the Tech quotes "4 Tires," flag this as a major discrepancy.
 - If a Tech fails an item without a specific measurement (e.g. "Needs brakes" vs "3mm"), flag as UNVERIFIED.
-- Compare Tech claims against the uploaded Dealership Standard Library.
+- Compare Tech claims against the uploaded Dealership Standard Library and Honda Maintenance Schedule.
 - Be highly skeptical of "Aggressive" technicians who have high historical variance.`;
 
 export const analyzeInspection = async (
@@ -17,7 +19,8 @@ export const analyzeInspection = async (
   mode: AnalysisMode
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
   // Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key from the dialog.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  // Fixed: Simplified API key access to follow direct usage guidelines by using the environment variable directly.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const { vehicle, data } = currentCase;
@@ -49,12 +52,17 @@ export const analyzeInspection = async (
       --- CURRENT CASE ---
       VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.kilometres} km)
       APPRAISER: ${data.appraiserName} | TECH: ${data.technicianName}
-      ESTIMATED RECON: $${data.managerAppraisalEstimate} | ACTUAL QUOTE: $${data.serviceDepartmentEstimate}
-      APPRAISER NOTES: ${data.appraiserNotes}
-      TECH NOTES: ${data.technicianNotes}
+      ORIGINAL APPRAISAL BUDGET: $${data.managerAppraisalEstimate} 
+      FINAL SERVICE DEPT QUOTE: $${data.serviceDepartmentEstimate}
       
-      TASK: Audit the Service Dept Estimate against the Ground Truth Library. 
-      Flag every item that does not meet the strict threshold for PASS/FAIL.
+      APPRAISER'S INTAKE NOTES: ${data.appraiserNotes}
+      TECHNICIAN'S REPAIR NOTES: ${data.technicianNotes}
+      
+      TASK: 
+      1. Audit the Service Dept Quote against the Appraiser's visual findings.
+      2. Audit the Quote against the Ground Truth rules.
+      3. Flag discrepancies where the Tech is quoting repairs for items the Appraiser saw as "Good" or "Passable."
+      
       Place [DETECTED_TOTAL: 1234.56] at the very end.
     `;
 
@@ -82,7 +90,8 @@ export const analyzeInspection = async (
 
 export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
   // Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key from the dialog.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  // Fixed: Simplified API key access to follow direct usage guidelines.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -103,7 +112,8 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
 
 export const extractVINFromImage = async (base64: string): Promise<any> => {
   // Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key from the dialog.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  // Fixed: Simplified API key access to follow direct usage guidelines.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({

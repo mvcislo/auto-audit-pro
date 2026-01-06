@@ -75,7 +75,7 @@ export interface HistoricalAggregates {
 }
 
 // Fixed: Global augmentation for window.aistudio to resolve TS2339 and modifier mismatch errors.
-// Using explicit AIStudio interface to match the existing environment's expected type and modifiers.
+// Removed 'readonly' modifier to match environment-provided definitions and prevent TS2687/TS2339 errors.
 declare global {
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
@@ -83,6 +83,6 @@ declare global {
   }
 
   interface Window {
-    readonly aistudio: AIStudio;
+    aistudio: AIStudio;
   }
 }
