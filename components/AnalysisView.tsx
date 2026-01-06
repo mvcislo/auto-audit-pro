@@ -13,7 +13,14 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
   const [showSource, setShowSource] = useState(true);
 
   const handlePrint = () => {
+    // Strategy: Change document title temporarily so browser "Save as PDF" 
+    // uses the VIN as the default filename.
+    const originalTitle = document.title;
+    const vinFilename = caseData?.vehicle.vin.slice(-8) || 'AUDIT-REPORT';
+    
+    document.title = vinFilename;
     window.print();
+    document.title = originalTitle;
   };
 
   const formatContent = (text: string) => {
@@ -55,6 +62,9 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
           .print-header { display: block !important; border-bottom: 2px solid #000; margin-bottom: 2rem; padding-bottom: 1rem; }
           .print-section { break-inside: avoid; margin-bottom: 1.5rem; }
           .audit-content { border-top: 1px solid #eee; padding-top: 1rem; }
+          .print-image-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; margin-top: 2rem !important; }
+          .print-image-container { break-inside: avoid !important; page-break-inside: avoid !important; }
+          .print-image { width: 100% !important; height: auto !important; border-radius: 4px !important; border: 1px solid #ddd !important; }
         }
       `}</style>
 
@@ -71,7 +81,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
         </div>
         <div className="flex gap-2">
           <button onClick={handlePrint} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-black transition-all flex items-center gap-2">
-            <i className="fas fa-file-pdf"></i> Export PDF
+            <i className="fas fa-file-pdf"></i> Export PDF ({caseData?.vehicle.vin.slice(-8)})
           </button>
           <button onClick={onReset} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
             <i className="fas fa-arrow-left"></i> Edit / New Audit
@@ -205,6 +215,29 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
               </div>
               {formatContent(content)}
             </div>
+
+            {/* Visual Evidence Section for PDF */}
+            {caseData && caseData.data.attachments && caseData.data.attachments.length > 0 && (
+              <div className="mt-12 pt-8 border-t-2 border-slate-900 print:break-before-auto">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <i className="fas fa-camera no-print"></i> Visual Evidence & Documentation
+                </h3>
+                <div className="grid grid-cols-2 gap-4 print-image-grid">
+                  {caseData.data.attachments.map((img, idx) => (
+                    <div key={idx} className="print-image-container relative rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                      <img 
+                        src={img} 
+                        alt={`Attachment ${idx + 1}`} 
+                        className="print-image w-full h-auto object-cover"
+                      />
+                      <div className="absolute bottom-0 right-0 bg-black/50 text-white px-2 py-1 text-[8px] font-bold">
+                        IMAGE_{idx + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {citations.length > 0 && (
               <div className="mt-8 pt-4 border-t border-slate-100 print:break-inside-avoid">
