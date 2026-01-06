@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { getAllCases, getTechnicianProfiles, getAppraiserProfiles } from '../services/storageService';
+// Fixed: Removed missing export 'getAppraiserProfiles' from storageService
+import { getAllCases, getTechnicianProfiles } from '../services/storageService';
 import { InspectionCase } from '../types';
 
 interface DashboardProps {

@@ -1,29 +1,16 @@
 
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { HistoricalAggregates, AnalysisMode } from '../types';
+import { HistoricalAggregates, AnalysisMode, StandardDocument } from '../types';
+import { getStandards, getTechnicianProfiles } from './storageService';
 
-// The API Key is obtained exclusively from process.env.API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
-const SYSTEM_INSTRUCTION = `You are the Lead Auditor for a high-volume Honda Dealership specializing in Ontario Safety Standards and HCUV.
-YOUR PHILOSOPHY:
-- SKEPTICISM BY DEFAULT: Technicians often pad hours.
-- MEASUREMENT IS LAW: If a tech fails an item but provides no measurement (mm, 32nds, PSI), flag it as "UNVERIFIED".
-- THE "PROFESSIONAL" DEFENSE: Counter tech claims with OEM specs and provincial law.
-
-REGULATORY THRESHOLDS:
-- TIRES: Safety Fail < 2/32". HCUV Fail < 5/32".
-- BRAKES: Safety Fail < 2mm. HCUV Fail < 5mm (50% life).
-- SUSPENSION: "Seeping" is NOT a safety failure in Ontario. Only "Dripping/Pooling" is.
-
-OUTPUT STRUCTURE:
-- 🔍 AUDIT OVERVIEW: [DETECTED_TOTAL] and Financial Variance.
-- ⚖️ THE VARIANCE REPORT: Appraiser vs Tech findings.
-- 🚨 GOUGING ALERT: Specific hour padding.
-- 🛠️ REQUIRED vs. RECOMMENDED: Table format.
-- 💬 MANAGER'S COMBAT CHECKLIST: Specific questions to ask the tech to prove the failure.
-
-IMPORTANT: Place [DETECTED_TOTAL: 1234.56] at the very end of your response.`;
+const BASE_SYSTEM_INSTRUCTION = `You are the Lead Auditor for a high-volume Honda Dealership.
+YOUR MISSION: Protect Dealership Gross Margin.
+STRATEGY:
+- If a Tech fails an item without a specific measurement (e.g. "Needs brakes" vs "3mm"), flag as UNVERIFIED.
+- Compare Tech claims against the uploaded Dealership Standard Library.
+- Be highly skeptical of "Aggressive" technicians who have high historical variance.`;
 
 export const analyzeInspection = async (
   currentCase: any, 
@@ -32,65 +19,93 @@ export const analyzeInspection = async (
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
   try {
     const { vehicle, data } = currentCase;
+    const standards = getStandards();
+    const techStats = getTechnicianProfiles().find(t => t.technicianName === data.technicianName);
+    
     const parts: any[] = [];
     
-    const attachments = data.attachments || [];
-    attachments.forEach((base64: string) => {
-      if (base64 && base64.includes(',')) {
+    // Attachments
+    data.attachments.forEach((base64: string) => {
+      if (base64.includes(',')) {
         parts.push({
           inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] }
         });
       }
     });
 
+    // Library Context
+    const libraryContext = standards.map(s => `[${s.type} STANDARD]: ${s.extractedRules}`).join('\n\n');
+
     const promptText = `
+      --- GROUND TRUTH LIBRARY ---
+      ${libraryContext}
+
+      --- HISTORICAL LEARNING ---
+      Technician ${data.technicianName} Reliability: ${techStats?.reliabilityTag || 'Unknown'} (Avg Variance: $${techStats?.avgVariance || 0})
+      Model Average Recon for ${vehicle.year} ${vehicle.model}: $${history?.avgReconCost || 'N/A'}
+
+      --- CURRENT CASE ---
       VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.kilometres} km)
       APPRAISER: ${data.appraiserName} | TECH: ${data.technicianName}
       ESTIMATED RECON: $${data.managerAppraisalEstimate} | ACTUAL QUOTE: $${data.serviceDepartmentEstimate}
-      APPRAISER OBSERVATIONS: ${data.appraiserNotes}
-      TECHNICIAN CLAIM: ${data.technicianNotes}
+      APPRAISER NOTES: ${data.appraiserNotes}
+      TECH NOTES: ${data.technicianNotes}
       
-      TASK: Audit this quote against Ontario Safety and Honda HCUV standards.
+      TASK: Audit the Service Dept Estimate against the Ground Truth Library. 
+      Flag every item that does not meet the strict threshold for PASS/FAIL.
+      Place [DETECTED_TOTAL: 1234.56] at the very end.
     `;
 
     parts.push({ text: promptText });
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: [{ parts }],
+      contents: { parts },
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: BASE_SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }]
       }
     });
 
     const fullText = response.text || "Analysis failed.";
-    const citations = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const totalMatch = fullText.match(/\[DETECTED_TOTAL:\s*([\d,.]+)\]/);
     const detectedTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : undefined;
 
-    return { text: fullText, detectedTotal, citations };
-  } catch (error: any) {
-    console.error("Gemini analyzeInspection Error Details:", error);
+    return { text: fullText, detectedTotal, citations: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] };
+  } catch (error) {
+    console.error(error);
     throw error;
   }
 };
 
-export const extractVINFromImage = async (base64: string): Promise<{ vin: string; year?: number; make?: string; model?: string } | null> => {
+export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{
+      contents: {
         parts: [
-          {
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: base64.split(',')[1]
-            }
-          },
-          { text: "Extract the 17-character VIN and vehicle details (Year, Make, Model) from this photo. Return valid JSON only." }
+          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
+          { text: `Extract all technical PASS/FAIL thresholds from this ${type} manual. Focus on measurements, labor hours, and specific mechanical criteria. Format as a concise, structured rule-set for an AI auditor.` }
         ]
-      }],
+      }
+    });
+    return response.text || "Failed to digest document.";
+  } catch (e) {
+    console.error(e);
+    return "Extraction error.";
+  }
+};
+
+export const extractVINFromImage = async (base64: string): Promise<any> => {
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
+          { text: "Extract VIN and vehicle details (Year, Make, Model). Return valid JSON." }
+        ]
+      },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -100,34 +115,23 @@ export const extractVINFromImage = async (base64: string): Promise<{ vin: string
             year: { type: Type.INTEGER },
             make: { type: Type.STRING },
             model: { type: Type.STRING }
-          },
-          required: ["vin"]
+          }
         }
       }
     });
-
-    const resultText = response.text;
-    if (!resultText) return null;
-    return JSON.parse(resultText);
-  } catch (e) {
-    console.error("VIN Extraction Error:", e);
-    return null;
-  }
+    return JSON.parse(response.text || '{}');
+  } catch (e) { return null; }
 };
 
 export const decodeVIN = async (vin: string): Promise<any> => {
-  if (!vin || vin.length < 17) return null;
   try {
     const response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`);
     const data = await response.json();
     const results = data.Results || [];
-    const year = results.find((r: any) => r.Variable === 'Model Year')?.Value;
-    const make = results.find((r: any) => r.Variable === 'Make')?.Value;
-    const model = results.find((r: any) => r.Variable === 'Model')?.Value;
-    if (!make && !model) return null;
-    return { year: parseInt(year), make, model };
-  } catch (e) {
-    console.error("VIN Decode Error:", e);
-    return null;
-  }
+    return {
+      year: parseInt(results.find((r: any) => r.Variable === 'Model Year')?.Value),
+      make: results.find((r: any) => r.Variable === 'Make')?.Value,
+      model: results.find((r: any) => r.Variable === 'Model')?.Value,
+    };
+  } catch (e) { return null; }
 };

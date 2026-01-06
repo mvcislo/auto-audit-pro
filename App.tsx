@@ -4,12 +4,13 @@ import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import InspectionForm from './components/InspectionForm';
 import AnalysisView from './components/AnalysisView';
+import AdminView from './components/AdminView';
 import { Vehicle, InspectionData, InspectionCase, AnalysisMode } from './types';
 import { analyzeInspection } from './services/geminiService';
 import { saveCase, getHistoricalContext } from './services/storageService';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'audit'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'audit' | 'admin'>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [currentAnalysis, setCurrentAnalysis] = useState<{ text: string; citations: any[] } | null>(null);
   const [autoFilledData, setAutoFilledData] = useState<Partial<InspectionData>>({});
@@ -40,9 +41,12 @@ const App: React.FC = () => {
       };
       saveCase(newCase);
     } catch (error: any) {
-      console.error("Full Analysis Error Object:", error);
-      const errorMsg = error.message || "Unknown error";
-      alert(`AI analysis failed: ${errorMsg}\n\nPlease check your console (F12) for details and ensure your API_KEY is set in Vercel settings.`);
+      console.error("Audit Error:", error);
+      if (error.message?.includes('RATE_LIMIT')) {
+        alert("⚠️ Usage Limit Reached:\n\nGemini Pro (Free Tier) only allows 2 audits per minute. Please wait about 45-60 seconds before trying again.");
+      } else {
+        alert(`Analysis failed: ${error.message || "Please check your network connection and API key."}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -53,6 +57,41 @@ const App: React.FC = () => {
       text: c.analysis || "Report not found.", 
       citations: [] 
     });
+  };
+
+  const renderContent = () => {
+    if (currentAnalysis) {
+      return (
+        <AnalysisView 
+          content={currentAnalysis.text} 
+          citations={currentAnalysis.citations}
+          onReset={() => setCurrentAnalysis(null)} 
+        />
+      );
+    }
+
+    switch (currentView) {
+      case 'dashboard':
+        return <Dashboard onSelectCase={handleSelectCase} />;
+      case 'admin':
+        return <AdminView />;
+      case 'audit':
+        return (
+          <div className="max-w-3xl mx-auto">
+            <div className="mb-8 text-center">
+              <h2 className="text-3xl font-black text-slate-900">Strategic Recon Audit</h2>
+              <p className="text-slate-500 font-medium">AI cross-referencing tech claims against dealership library.</p>
+            </div>
+            <InspectionForm 
+              onAnalyze={handleAnalyze} 
+              isLoading={isLoading} 
+              initialData={autoFilledData as any}
+            />
+          </div>
+        );
+      default:
+        return <Dashboard onSelectCase={handleSelectCase} />;
+    }
   };
 
   return (
@@ -66,27 +105,7 @@ const App: React.FC = () => {
       />
       
       <main className="max-w-7xl mx-auto px-4 mt-8">
-        {currentAnalysis ? (
-          <AnalysisView 
-            content={currentAnalysis.text} 
-            citations={currentAnalysis.citations}
-            onReset={() => setCurrentAnalysis(null)} 
-          />
-        ) : currentView === 'dashboard' ? (
-          <Dashboard onSelectCase={handleSelectCase} />
-        ) : (
-          <div className="max-w-3xl mx-auto">
-            <div className="mb-8 text-center">
-              <h2 className="text-3xl font-black text-slate-900">New Strategic Audit</h2>
-              <p className="text-slate-500 font-medium">Protect your gross profit with AI-powered inspection verification.</p>
-            </div>
-            <InspectionForm 
-              onAnalyze={handleAnalyze} 
-              isLoading={isLoading} 
-              initialData={autoFilledData as any}
-            />
-          </div>
-        )}
+        {renderContent()}
       </main>
       
       {!currentAnalysis && currentView === 'dashboard' && (

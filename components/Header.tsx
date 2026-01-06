@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface HeaderProps {
-  onNavigate: (view: 'dashboard' | 'audit') => void;
+  onNavigate: (view: 'dashboard' | 'audit' | 'admin') => void;
   currentView: string;
 }
 
@@ -26,6 +26,12 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentView }) => {
             className={`text-sm font-semibold transition-colors ${currentView === 'dashboard' ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'}`}
           >
             Dashboard
+          </button>
+          <button 
+            onClick={() => onNavigate('admin')}
+            className={`text-sm font-semibold transition-colors ${currentView === 'admin' ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            Library
           </button>
           <button 
             onClick={() => onNavigate('audit')}

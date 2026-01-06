@@ -12,8 +12,16 @@ export enum OutcomeStatus {
 }
 
 export enum AnalysisMode {
-  AUDIT = 'Audit Mode', // Post-inspection check
-  APPRAISAL = 'Appraisal Mode' // Pre-purchase estimation
+  AUDIT = 'Audit Mode', 
+  APPRAISAL = 'Appraisal Mode'
+}
+
+export interface StandardDocument {
+  id: string;
+  type: 'SAFETY' | 'HCUV' | 'DEALERSHIP';
+  fileName: string;
+  uploadDate: number;
+  extractedRules: string;
 }
 
 export interface Vehicle {
@@ -54,7 +62,7 @@ export interface PerformanceStats {
   appraiserName: string;
   totalCases: number;
   avgVariance: number;
-  accuracyRating: number; // 0-100
+  accuracyRating: number; 
   reliabilityTag: 'Aggressive' | 'Accurate' | 'Passive';
 }
 

@@ -1,7 +1,8 @@
 
-import { InspectionCase, PerformanceStats, HistoricalAggregates } from '../types';
+import { InspectionCase, PerformanceStats, HistoricalAggregates, StandardDocument } from '../types';
 
 const STORAGE_KEY = 'auto_audit_cases';
+const STANDARDS_KEY = 'auto_audit_standards';
 
 export const saveCase = (newCase: InspectionCase) => {
   const cases = getAllCases();
@@ -11,6 +12,19 @@ export const saveCase = (newCase: InspectionCase) => {
 
 export const getAllCases = (): InspectionCase[] => {
   const data = localStorage.getItem(STORAGE_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+export const saveStandard = (doc: StandardDocument) => {
+  const standards = getStandards();
+  const index = standards.findIndex(s => s.type === doc.type);
+  if (index > -1) standards[index] = doc;
+  else standards.push(doc);
+  localStorage.setItem(STANDARDS_KEY, JSON.stringify(standards));
+};
+
+export const getStandards = (): StandardDocument[] => {
+  const data = localStorage.getItem(STANDARDS_KEY);
   return data ? JSON.parse(data) : [];
 };
 
@@ -35,37 +49,11 @@ export const getTechnicianProfiles = (): PerformanceStats[] => {
 
     return {
       technicianName: name,
-      appraiserName: '', // Placeholder
+      appraiserName: '', 
       totalCases: stats.count,
       avgVariance,
       accuracyRating: Math.max(0, 100 - (Math.abs(avgVariance) / 100)),
       reliabilityTag: tag
-    };
-  });
-};
-
-export const getAppraiserProfiles = (): PerformanceStats[] => {
-  const cases = getAllCases();
-  const appraiserMap = new Map<string, { total: number; variance: number; count: number }>();
-
-  cases.forEach(c => {
-    if (!c.data.appraiserName) return;
-    const stats = appraiserMap.get(c.data.appraiserName) || { total: 0, variance: 0, count: 0 };
-    const variance = c.data.serviceDepartmentEstimate - c.data.managerAppraisalEstimate;
-    stats.variance += variance;
-    stats.count += 1;
-    appraiserMap.set(c.data.appraiserName, stats);
-  });
-
-  return Array.from(appraiserMap.entries()).map(([name, stats]) => {
-    const avgVariance = stats.variance / stats.count;
-    return {
-      technicianName: '',
-      appraiserName: name,
-      totalCases: stats.count,
-      avgVariance,
-      accuracyRating: Math.max(0, 100 - (Math.abs(avgVariance) / 100)),
-      reliabilityTag: avgVariance < 0 ? 'Passive' : 'Aggressive'
     };
   });
 };
@@ -85,7 +73,7 @@ export const getHistoricalContext = (make: string, model: string, year: number):
     modelName: model,
     year,
     avgReconCost: totalCost / filtered.length,
-    commonFailureCount: {}, // Simplified for now
+    commonFailureCount: {}, 
     totalCases: filtered.length
   };
 };
