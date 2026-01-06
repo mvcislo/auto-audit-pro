@@ -205,31 +205,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
         </section>
 
         <section>
-          <h3 className="text-sm font-black text-slate-800 uppercase mb-4">3. Professional Observations</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Technician Findings (Original)</label>
-              <textarea 
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium h-32 outline-none focus:border-indigo-500 transition-all"
-                value={data.technicianNotes}
-                onChange={e => setData(d => ({ ...d, technicianNotes: e.target.value }))}
-                placeholder="Tech's stated repairs and reasons..."
-              ></textarea>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Appraiser Audit Notes (What you saw)</label>
-              <textarea 
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium h-32 outline-none focus:border-indigo-500 transition-all"
-                value={data.appraiserNotes}
-                onChange={e => setData(d => ({ ...d, appraiserNotes: e.target.value }))}
-                placeholder="Manager's visual appraisal findings at intake..."
-              ></textarea>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h3 className="text-sm font-black text-slate-800 uppercase mb-4">4. Documentation Capture</h3>
+          <h3 className="text-sm font-black text-slate-800 uppercase mb-4">3. Documentation Capture</h3>
           <div className="grid grid-cols-2 gap-4">
             <button type="button" onClick={() => document.getElementById('cameraInput')?.click()} className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-3xl hover:bg-indigo-50 transition-all group">
               <i className="fas fa-camera text-2xl text-indigo-600 mb-2 group-hover:scale-110 transition-transform"></i>

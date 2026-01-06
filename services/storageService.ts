@@ -1,8 +1,17 @@
 
-import { InspectionCase, PerformanceStats, HistoricalAggregates, StandardDocument } from '../types';
+import { InspectionCase, PerformanceStats, HistoricalAggregates, StandardDocument, DealershipBrand } from '../types';
 
 const STORAGE_KEY = 'auto_audit_cases';
 const STANDARDS_KEY = 'auto_audit_standards';
+const BRAND_KEY = 'auto_audit_brand';
+
+export const saveBrand = (brand: DealershipBrand) => {
+  localStorage.setItem(BRAND_KEY, brand);
+};
+
+export const getBrand = (): DealershipBrand => {
+  return (localStorage.getItem(BRAND_KEY) as DealershipBrand) || 'Honda';
+};
 
 export const saveCase = (newCase: InspectionCase) => {
   const cases = getAllCases();

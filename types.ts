@@ -1,9 +1,11 @@
 
 export enum InspectionType {
   ONTARIO_SAFETY = 'Ontario Safety',
-  HCUV = 'HCUV Certified',
+  HCUV = 'Certified Pre-Owned',
   BOTH = 'Both'
 }
+
+export type DealershipBrand = 'Honda' | 'Toyota' | 'Chevrolet' | 'Ford' | 'Hyundai' | 'Nissan' | 'Other';
 
 export enum OutcomeStatus {
   PASS = 'Pass',
@@ -72,17 +74,4 @@ export interface HistoricalAggregates {
   avgReconCost: number;
   commonFailureCount: Record<string, number>;
   totalCases: number;
-}
-
-// Fixed: Re-added 'readonly' modifier to match environment-provided definitions and prevent TS2687/TS2339 errors.
-// This ensures that all declarations of 'aistudio' on the Window interface have identical modifiers as required by TypeScript.
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-
-  interface Window {
-    readonly aistudio: AIStudio;
-  }
 }

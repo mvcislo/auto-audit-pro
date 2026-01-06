@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { StandardDocument } from '../types';
-import { saveStandard, getStandards } from '../services/storageService';
+import { StandardDocument, DealershipBrand } from '../types';
+import { saveStandard, getStandards, saveBrand, getBrand } from '../services/storageService';
 import { digestStandardDocument } from '../services/geminiService';
 
 const AdminView: React.FC = () => {
   const [standards, setStandards] = useState<StandardDocument[]>(getStandards());
+  const [currentBrand, setCurrentBrand] = useState<DealershipBrand>(getBrand());
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasPaidKey, setHasPaidKey] = useState(false);
 
@@ -24,6 +25,11 @@ const AdminView: React.FC = () => {
       await window.aistudio.openSelectKey();
       setHasPaidKey(true);
     }
+  };
+
+  const handleBrandChange = (brand: DealershipBrand) => {
+    setCurrentBrand(brand);
+    saveBrand(brand);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: StandardDocument['type']) => {
@@ -51,12 +57,24 @@ const AdminView: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const getCPOLabel = () => {
+    switch (currentBrand) {
+      case 'Honda': return 'HCUV Manual (Honda)';
+      case 'Toyota': return 'TCUV Manual (Toyota)';
+      case 'Chevrolet': return 'GM Certified Manual';
+      case 'Ford': return 'Blue/Gold Advantage Manual';
+      default: return `${currentBrand} CPO Manual`;
+    }
+  };
+
   const libraryItems = [
     { key: 'SAFETY', label: 'Ontario Safety Std', icon: 'fa-gavel', color: 'indigo' },
-    { key: 'HCUV', label: 'Honda HCUV Manual', icon: 'fa-check-circle', color: 'emerald' },
-    { key: 'HONDA_MAINTENANCE', label: 'Honda Maintenance (CA)', icon: 'fa-calendar-alt', color: 'red' },
+    { key: 'HCUV', label: getCPOLabel(), icon: 'fa-check-circle', color: 'emerald' },
+    { key: 'HONDA_MAINTENANCE', label: `${currentBrand} Service Sched (CA)`, icon: 'fa-calendar-alt', color: 'red' },
     { key: 'DEALERSHIP', label: 'Dealer Recon Policy', icon: 'fa-building', color: 'blue' }
   ];
+
+  const brands: DealershipBrand[] = ['Honda', 'Toyota', 'Chevrolet', 'Ford', 'Hyundai', 'Nissan', 'Other'];
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -65,7 +83,37 @@ const AdminView: React.FC = () => {
           <i className="fas fa-shield-alt text-9xl"></i>
         </div>
         <h2 className="text-3xl font-black uppercase tracking-tighter">Ground Truth Library</h2>
-        <p className="text-slate-400 text-sm font-medium mt-2">Upload PDFs to train the AI on specific dealership, provincial, and manufacturer rules.</p>
+        <p className="text-slate-400 text-sm font-medium mt-2">Set your dealership identity and train the AI on specific brand rules.</p>
+      </div>
+
+      {/* Brand Selection Card */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
+            <i className="fas fa-tag"></i>
+          </div>
+          <div>
+            <h3 className="font-black text-slate-800 uppercase text-xs">Dealership Identity</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Configure primary brand audit context</p>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-3">
+          {brands.map(brand => (
+            <button
+              key={brand}
+              onClick={() => handleBrandChange(brand)}
+              className={`px-6 py-3 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${
+                currentBrand === brand 
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              {currentBrand === brand && <i className="fas fa-check-circle"></i>}
+              {brand}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
