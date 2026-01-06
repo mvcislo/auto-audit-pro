@@ -1,0 +1,7 @@
+{
+  "name": "Copy of AutoAudit Pro: Dealer Intelligence jan 6",
+  "description": "Advanced Ontario Safety & HCUV inspection auditor and predictive appraisal tool. Analyzes technician accuracy, tracks manager variance, and protects gross profit using Gemini Pro.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
