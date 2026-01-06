@@ -18,7 +18,7 @@ export enum AnalysisMode {
 
 export interface StandardDocument {
   id: string;
-  type: 'SAFETY' | 'HCUV' | 'DEALERSHIP';
+  type: 'SAFETY' | 'HCUV' | 'DEALERSHIP' | 'HONDA_MAINTENANCE';
   fileName: string;
   uploadDate: number;
   extractedRules: string;

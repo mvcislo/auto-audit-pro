@@ -7,11 +7,12 @@ import AnalysisView from './components/AnalysisView';
 import AdminView from './components/AdminView';
 import { Vehicle, InspectionData, InspectionCase, AnalysisMode } from './types';
 import { analyzeInspection } from './services/geminiService';
-import { saveCase, getHistoricalContext } from './services/storageService';
+import { saveCase, getHistoricalContext, getAllCases } from './services/storageService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'audit' | 'admin'>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeCase, setActiveCase] = useState<InspectionCase | null>(null);
   const [currentAnalysis, setCurrentAnalysis] = useState<{ text: string; citations: any[] } | null>(null);
   const [autoFilledData, setAutoFilledData] = useState<Partial<InspectionData>>({});
 
@@ -39,6 +40,7 @@ const App: React.FC = () => {
         analysis: result.text,
         detectedTotal: result.detectedTotal
       };
+      setActiveCase(newCase);
       saveCase(newCase);
     } catch (error: any) {
       console.error("Audit Error:", error);
@@ -53,6 +55,7 @@ const App: React.FC = () => {
   };
 
   const handleSelectCase = (c: InspectionCase) => {
+    setActiveCase(c);
     setCurrentAnalysis({ 
       text: c.analysis || "Report not found.", 
       citations: [] 
@@ -65,7 +68,15 @@ const App: React.FC = () => {
         <AnalysisView 
           content={currentAnalysis.text} 
           citations={currentAnalysis.citations}
-          onReset={() => setCurrentAnalysis(null)} 
+          caseData={activeCase || undefined}
+          onReset={() => {
+            setCurrentAnalysis(null);
+            // If we have an active case, let's pre-fill the form to "Edit"
+            if (activeCase) {
+              setAutoFilledData(activeCase.data);
+              setCurrentView('audit');
+            }
+          }} 
         />
       );
     }
@@ -101,6 +112,7 @@ const App: React.FC = () => {
         onNavigate={(view) => {
           setCurrentView(view);
           setCurrentAnalysis(null);
+          setActiveCase(null);
         }} 
       />
       

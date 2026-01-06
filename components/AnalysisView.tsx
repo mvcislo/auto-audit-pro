@@ -1,13 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { InspectionCase } from '../types';
 
 interface AnalysisViewProps {
   content: string;
   citations: any[];
+  caseData?: InspectionCase;
   onReset: () => void;
 }
 
-const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, onReset }) => {
+const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseData, onReset }) => {
+  const [showSource, setShowSource] = useState(true);
+
   const handlePrint = () => {
     window.print();
   };
@@ -15,28 +19,22 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, onReset
   const formatContent = (text: string) => {
     if (!text) return null;
     return text.split('\n').map((line, i) => {
-      // Headers
-      if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-black text-slate-900 mt-6 mb-3 border-b-2 border-slate-900 pb-1 uppercase tracking-tight print:text-xl print:mt-2">{line.substring(2)}</h1>;
+      if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-black text-slate-900 mt-6 mb-3 border-b-2 border-slate-900 pb-1 uppercase tracking-tight print:text-xl print:mt-4 print:mb-2">{line.substring(2)}</h1>;
       if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold text-indigo-800 mt-6 mb-2 flex items-center gap-2 print:text-sm print:mt-4 print:text-slate-800 break-after-avoid">{line.substring(3)}</h2>;
       if (line.startsWith('### ')) return <h3 key={i} className="text-md font-bold text-slate-700 mt-4 mb-1 print:text-xs">{line.substring(4)}</h3>;
-      
-      // Lists
       if (line.startsWith('- ')) return <li key={i} className="ml-5 mb-1 text-slate-700 text-sm list-disc print:text-[10px] print:ml-4">{line.substring(2)}</li>;
       
-      // Bold items
       if (line.includes('**')) {
         const parts = line.split('**');
         return <p key={i} className="mb-2 text-sm text-slate-700 leading-relaxed print:text-[10px] print:mb-1">{parts.map((p, j) => j % 2 === 1 ? <strong key={j} className="text-slate-900 font-bold">{p}</strong> : p)}</p>;
       }
       
-      // Critical "Combat Checklist" Styling
       if (line.includes("MANAGER'S COMBAT CHECKLIST") || line.includes("Push-back") || line.includes("🚨")) {
          return <div key={i} className="bg-red-50 border-l-4 border-red-600 p-4 rounded-r-xl my-4 text-red-900 font-bold text-sm break-inside-avoid print:my-2 print:p-2 print:text-[10px] print:bg-slate-50 print:border-red-400">
            {line}
          </div>;
       }
 
-      // Proof Indicators
       if (line.toLowerCase().includes("proof") || line.toLowerCase().includes("measurement")) {
         return <p key={i} className="bg-indigo-50 px-2 py-1 inline-block rounded text-indigo-700 font-bold text-[11px] mb-2 print:text-[9px] print:bg-slate-100">{line}</p>;
       }
@@ -46,105 +44,185 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, onReset
     });
   };
 
-  const safeCitations = citations || [];
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20 animate-in fade-in zoom-in duration-500">
+    <div className="max-w-7xl mx-auto pb-20 animate-in fade-in zoom-in duration-500">
       <style>{`
         @media print {
-          @page {
-            size: auto;
-            margin: 10mm;
-          }
-          body { 
-            background: white !important; 
-            margin: 0 !important;
-            padding: 0 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            font-size: 10pt;
-          }
-          header, .no-print, button, nav, aside { 
-            display: none !important; 
-            height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .print-container { 
-            box-shadow: none !important; 
-            border: none !important; 
-            padding: 0 !important; 
-            margin: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-          }
-          .break-inside-avoid { 
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-          p, li {
-            margin-bottom: 0.15rem !important;
-          }
-          h1, h2, h3 { margin-top: 0.5rem !important; }
+          @page { size: auto; margin: 15mm; }
+          body { background: white !important; -webkit-print-color-adjust: exact !important; }
+          .no-print { display: none !important; }
+          .print-full { width: 100% !important; margin: 0 !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+          .print-header { display: block !important; border-bottom: 2px solid #e2e8f0; margin-bottom: 2rem; padding-bottom: 1rem; }
+          .print-section { break-inside: avoid; margin-bottom: 1.5rem; }
         }
       `}</style>
 
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm sticky top-20 z-40 border border-slate-200 no-print">
+      {/* Control Bar */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm sticky top-20 z-40 border border-slate-200 no-print mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
-          <span className="text-sm font-black text-slate-800 uppercase tracking-tighter">Strategic Audit Complete</span>
+          <button 
+            onClick={() => setShowSource(!showSource)}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${showSource ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}
+          >
+            <i className={`fas ${showSource ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            {showSource ? 'Hide Input Data' : 'Show Input Data'}
+          </button>
         </div>
         <div className="flex gap-2">
-          <button 
-            onClick={handlePrint}
-            className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-black transition-all flex items-center gap-2"
-          >
-            <i className="fas fa-file-pdf"></i> Export Audit PDF
+          <button onClick={handlePrint} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-black transition-all flex items-center gap-2">
+            <i className="fas fa-file-pdf"></i> Export PDF
           </button>
-          <button 
-            onClick={onReset}
-            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all"
-          >
-            New Audit
+          <button onClick={onReset} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
+            <i className="fas fa-arrow-left"></i> Edit / New Audit
           </button>
         </div>
       </div>
 
-      <div className="print-container bg-white p-10 rounded-3xl shadow-2xl border border-slate-100 prose prose-slate max-w-none">
-        <div className="hidden print:block mb-4 border-b-4 border-slate-900 pb-2">
-          <div className="flex justify-between items-end">
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 m-0 p-0 uppercase leading-none">RECON AUDIT REPORT</h1>
-              <p className="text-slate-500 font-bold m-0 p-0 uppercase text-[8px] tracking-[0.2em]">Dealer Operations Intelligence Agency</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-black text-slate-900 m-0 leading-none">{new Date().toLocaleDateString('en-CA').toUpperCase()}</p>
-              <p className="text-[8px] font-bold text-slate-400 m-0 uppercase">Internal Document - Confidential</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="audit-content">
-          {formatContent(content)}
-        </div>
-
-        {safeCitations.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-slate-100 break-inside-avoid">
-            <h4 className="font-black text-[9px] text-slate-400 uppercase tracking-widest mb-1">Market Verification Data</h4>
-            <div className="grid grid-cols-2 gap-x-4">
-              {safeCitations.slice(0, 4).map((cite, idx) => (
-                <div key={idx} className="flex items-center gap-1 text-[8px] text-slate-500 truncate">
-                  <span className="text-indigo-600 font-black">»</span>
-                  <span className="truncate">{cite.web?.title || cite.web?.uri}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Input Summary Sidebar (Web Only) */}
+        {showSource && caseData && (
+          <div className="lg:col-span-4 space-y-4 no-print sticky top-40 animate-in slide-in-from-left-4 duration-300">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Case Identity</h4>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">
+                    <i className="fas fa-car"></i>
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 leading-tight">{caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}</p>
+                    <p className="text-[10px] font-mono text-slate-400">{caseData.vehicle.vin}</p>
+                  </div>
                 </div>
-              ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <p className="text-[8px] font-black text-slate-400 uppercase">Mileage</p>
+                    <p className="text-xs font-bold text-slate-700">{caseData.vehicle.kilometres.toLocaleString()} km</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <p className="text-[8px] font-black text-slate-400 uppercase">Tech</p>
+                    <p className="text-xs font-bold text-slate-700">{caseData.data.technicianName || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Financial Benchmarks</h4>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-slate-500">Manager Budget</span>
+                  <span className="text-sm font-bold text-slate-900">${caseData.data.managerAppraisalEstimate.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-slate-500">Service Quote</span>
+                  <span className="text-sm font-black text-indigo-600">${caseData.data.serviceDepartmentEstimate.toLocaleString()}</span>
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                  <span className="text-xs font-black text-slate-900 uppercase">Gross Gap</span>
+                  <span className="text-sm font-black text-red-600">
+                    -${Math.abs(caseData.data.serviceDepartmentEstimate - caseData.data.managerAppraisalEstimate).toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )}
-      </div>
-      
-      <div className="text-center text-[10px] text-slate-400 no-print pb-10 uppercase tracking-widest font-bold">
-        <p>Warning: This audit is designed for managerial use only. Review with Service Manager before confronting technicians.</p>
+
+        {/* Audit Content & Print Layout */}
+        <div className={`${showSource ? 'lg:col-span-8' : 'lg:col-span-12'} transition-all duration-300 print:lg:col-span-12`}>
+          <div className="print-full bg-white p-10 rounded-3xl shadow-2xl border border-slate-100 prose prose-slate max-w-none print:shadow-none print:border-none print:p-0">
+            
+            {/* PRINT ONLY HEADER */}
+            <div className="hidden print:block print-header">
+              <div className="flex justify-between items-end mb-6">
+                <div>
+                  <h1 className="text-3xl font-black text-slate-900 m-0 uppercase leading-none">AUDIT DISCREPANCY REPORT</h1>
+                  <p className="text-slate-500 font-bold m-0 uppercase text-[9px] tracking-[0.2em] mt-2">AutoAudit Pro | Canadian Dealer Intelligence Engine</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-black text-slate-900 m-0">{new Date().toLocaleDateString('en-CA').toUpperCase()}</p>
+                  <p className="text-[8px] font-bold text-slate-400 m-0 uppercase">Case ID: {caseData?.id.substring(0, 8)}</p>
+                </div>
+              </div>
+
+              {caseData && (
+                <div className="grid grid-cols-3 gap-6 border-y-2 border-slate-900 py-6 my-6 bg-slate-50/50">
+                  <div>
+                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Vehicle Profile</h5>
+                    <p className="text-sm font-black text-slate-900 m-0">{caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}</p>
+                    <p className="text-[10px] font-mono font-bold text-slate-500 m-0">{caseData.vehicle.vin}</p>
+                    <p className="text-[10px] font-bold text-slate-700 m-0 mt-1">{caseData.vehicle.kilometres.toLocaleString()} KM | {caseData.vehicle.acquisitionType}</p>
+                  </div>
+                  <div>
+                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Personnel</h5>
+                    <p className="text-xs font-bold text-slate-700 m-0">Technician: <span className="text-slate-900">{caseData.data.technicianName || 'N/A'}</span></p>
+                    <p className="text-xs font-bold text-slate-700 m-0">Appraiser: <span className="text-slate-900">{caseData.data.appraiserName || 'N/A'}</span></p>
+                    <p className="text-xs font-bold text-slate-700 m-0 mt-1">Audit Type: <span className="text-slate-900">{caseData.data.type}</span></p>
+                  </div>
+                  <div>
+                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Financials</h5>
+                    <div className="flex justify-between text-xs font-bold">
+                      <span>Original Budget:</span>
+                      <span className="text-slate-900">${caseData.data.managerAppraisalEstimate.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-black">
+                      <span>Service Quote:</span>
+                      <span className="text-indigo-700">${caseData.data.serviceDepartmentEstimate.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-black border-t border-slate-300 mt-1 pt-1">
+                      <span>Gross Leakage:</span>
+                      <span className="text-red-600">-${Math.abs(caseData.data.serviceDepartmentEstimate - caseData.data.managerAppraisalEstimate).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {caseData && (caseData.data.technicianNotes || caseData.data.appraiserNotes) && (
+                <div className="grid grid-cols-2 gap-8 mb-6">
+                  {caseData.data.technicianNotes && (
+                    <div>
+                      <h5 className="text-[9px] font-black uppercase text-slate-400 mb-1">Technician Input</h5>
+                      <p className="text-[10px] italic text-slate-700 leading-relaxed border-l-2 border-slate-200 pl-3">{caseData.data.technicianNotes}</p>
+                    </div>
+                  )}
+                  {caseData.data.appraiserNotes && (
+                    <div>
+                      <h5 className="text-[9px] font-black uppercase text-slate-400 mb-1">Appraiser Input</h5>
+                      <p className="text-[10px] italic text-slate-700 leading-relaxed border-l-2 border-slate-200 pl-3">{caseData.data.appraiserNotes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="audit-content print:mt-4">
+              {formatContent(content)}
+            </div>
+
+            {citations.length > 0 && (
+              <div className="mt-8 pt-4 border-t border-slate-100 print:break-inside-avoid">
+                <h4 className="font-black text-[9px] text-slate-400 uppercase tracking-widest mb-2">Data Sources & Regulatory Citations</h4>
+                <div className="grid grid-cols-2 gap-2 print:grid-cols-1">
+                  {citations.map((cite, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-[10px] text-slate-500 truncate bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <i className="fas fa-link text-indigo-400 text-[8px]"></i>
+                      <span className="truncate">{cite.web?.title || cite.web?.uri}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-8 text-center text-[10px] text-slate-400 no-print pb-10 uppercase tracking-widest font-bold">
+            <p>Report generated via AutoAudit Pro. Analysis cross-referenced against saved Dealership Knowledge Base.</p>
+          </div>
+          
+          <div className="hidden print:block mt-12 text-center text-[9px] text-slate-400 uppercase tracking-widest font-bold border-t border-slate-100 pt-4">
+            <p>End of Audit Report. Classified Document - Internal Use Only.</p>
+          </div>
+        </div>
       </div>
     </div>
   );
