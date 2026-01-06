@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import InspectionForm from './components/InspectionForm';
 import AnalysisView from './components/AnalysisView';
 import { Vehicle, InspectionData, InspectionCase, AnalysisMode } from './types';
 import { analyzeInspection } from './services/geminiService';
-import { saveCase, getHistoricalContext, getAllCases } from './services/storageService';
+import { saveCase, getHistoricalContext } from './services/storageService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'audit'>('dashboard');
@@ -18,7 +18,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       const history = getHistoricalContext(vehicle.make, vehicle.model, vehicle.year);
-      const result = await analyzeInspection({ vehicle, data, mode } as any, history, mode);
+      const result = await analyzeInspection({ vehicle, data, mode }, history, mode);
       
       setCurrentAnalysis({ text: result.text, citations: result.citations });
 
@@ -39,9 +39,10 @@ const App: React.FC = () => {
         detectedTotal: result.detectedTotal
       };
       saveCase(newCase);
-    } catch (error) {
-      console.error("Analysis Error:", error);
-      alert("AI analysis failed. Please check your API key and connection.");
+    } catch (error: any) {
+      console.error("Full Analysis Error Object:", error);
+      const errorMsg = error.message || "Unknown error";
+      alert(`AI analysis failed: ${errorMsg}\n\nPlease check your console (F12) for details and ensure your API_KEY is set in Vercel settings.`);
     } finally {
       setIsLoading(false);
     }

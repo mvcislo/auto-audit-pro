@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { InspectionCase, HistoricalAggregates, AnalysisMode } from '../types';
+import { HistoricalAggregates, AnalysisMode } from '../types';
 
 // The API Key is obtained exclusively from process.env.API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -30,52 +30,57 @@ export const analyzeInspection = async (
   history: HistoricalAggregates | null,
   mode: AnalysisMode
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
-  const { vehicle, data } = currentCase;
-  const parts: any[] = [];
-  
-  const attachments = data.attachments || [];
-  attachments.forEach((base64: string) => {
-    if (base64 && base64.includes(',')) {
-      parts.push({
-        inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] }
-      });
-    }
-  });
-
-  const prompt = `
-    VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.kilometres} km)
-    APPRAISER: ${data.appraiserName} | TECH: ${data.technicianName}
-    ESTIMATED RECON: $${data.managerAppraisalEstimate} | ACTUAL QUOTE: $${data.serviceDepartmentEstimate}
-    APPRAISER OBSERVATIONS: ${data.appraiserNotes}
-    TECHNICIAN CLAIM: ${data.technicianNotes}
+  try {
+    const { vehicle, data } = currentCase;
+    const parts: any[] = [];
     
-    TASK: Audit this quote. Flag unnecessary maintenance presented as safety. Check if the tech is padding hours based on the attached images.
-  `;
+    const attachments = data.attachments || [];
+    attachments.forEach((base64: string) => {
+      if (base64 && base64.includes(',')) {
+        parts.push({
+          inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] }
+        });
+      }
+    });
 
-  parts.push({ text: prompt });
+    const promptText = `
+      VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.kilometres} km)
+      APPRAISER: ${data.appraiserName} | TECH: ${data.technicianName}
+      ESTIMATED RECON: $${data.managerAppraisalEstimate} | ACTUAL QUOTE: $${data.serviceDepartmentEstimate}
+      APPRAISER OBSERVATIONS: ${data.appraiserNotes}
+      TECHNICIAN CLAIM: ${data.technicianNotes}
+      
+      TASK: Audit this quote against Ontario Safety and Honda HCUV standards.
+    `;
 
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: { parts },
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      tools: [{ googleSearch: {} }]
-    }
-  });
+    parts.push({ text: promptText });
 
-  const fullText = response.text || "Analysis failed.";
-  const citations = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-  const totalMatch = fullText.match(/\[DETECTED_TOTAL:\s*([\d,.]+)\]/);
-  const detectedTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : undefined;
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: [{ parts }],
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        tools: [{ googleSearch: {} }]
+      }
+    });
 
-  return { text: fullText, detectedTotal, citations };
+    const fullText = response.text || "Analysis failed.";
+    const citations = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const totalMatch = fullText.match(/\[DETECTED_TOTAL:\s*([\d,.]+)\]/);
+    const detectedTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : undefined;
+
+    return { text: fullText, detectedTotal, citations };
+  } catch (error: any) {
+    console.error("Gemini analyzeInspection Error Details:", error);
+    throw error;
+  }
 };
 
 export const extractVINFromImage = async (base64: string): Promise<{ vin: string; year?: number; make?: string; model?: string } | null> => {
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: {
+      contents: [{
         parts: [
           {
             inlineData: {
@@ -83,9 +88,9 @@ export const extractVINFromImage = async (base64: string): Promise<{ vin: string
               data: base64.split(',')[1]
             }
           },
-          { text: "Extract the 17-character VIN and vehicle details (Year, Make, Model) from this photo. Return JSON." }
+          { text: "Extract the 17-character VIN and vehicle details (Year, Make, Model) from this photo. Return valid JSON only." }
         ]
-      },
+      }],
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -111,7 +116,7 @@ export const extractVINFromImage = async (base64: string): Promise<{ vin: string
 };
 
 export const decodeVIN = async (vin: string): Promise<any> => {
-  if (vin.length < 17) return null;
+  if (!vin || vin.length < 17) return null;
   try {
     const response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`);
     const data = await response.json();
@@ -122,6 +127,7 @@ export const decodeVIN = async (vin: string): Promise<any> => {
     if (!make && !model) return null;
     return { year: parseInt(year), make, model };
   } catch (e) {
+    console.error("VIN Decode Error:", e);
     return null;
   }
 };
