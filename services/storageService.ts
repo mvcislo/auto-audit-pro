@@ -1,9 +1,11 @@
 
-import { InspectionCase, PerformanceStats, HistoricalAggregates, StandardDocument, DealershipBrand } from '../types';
+import { InspectionCase, PerformanceStats, HistoricalAggregates, StandardDocument, DealershipBrand, Appraiser, Technician } from '../types';
 
 const STORAGE_KEY = 'auto_audit_cases';
 const STANDARDS_KEY = 'auto_audit_standards';
 const BRAND_KEY = 'auto_audit_brand';
+const APPRAISERS_KEY = 'auto_audit_appraisers';
+const TECHNICIANS_KEY = 'auto_audit_technicians';
 
 export const saveBrand = (brand: DealershipBrand) => {
   localStorage.setItem(BRAND_KEY, brand);
@@ -11,6 +13,40 @@ export const saveBrand = (brand: DealershipBrand) => {
 
 export const getBrand = (): DealershipBrand => {
   return (localStorage.getItem(BRAND_KEY) as DealershipBrand) || 'Honda';
+};
+
+export const getAppraisers = (): Appraiser[] => {
+  const data = localStorage.getItem(APPRAISERS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+export const saveAppraiser = (appraiser: Appraiser) => {
+  const current = getAppraisers();
+  current.push(appraiser);
+  localStorage.setItem(APPRAISERS_KEY, JSON.stringify(current));
+};
+
+export const deleteAppraiser = (id: string) => {
+  const current = getAppraisers();
+  const filtered = current.filter(a => a.id !== id);
+  localStorage.setItem(APPRAISERS_KEY, JSON.stringify(filtered));
+};
+
+export const getTechnicians = (): Technician[] => {
+  const data = localStorage.getItem(TECHNICIANS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+export const saveTechnician = (tech: Technician) => {
+  const current = getTechnicians();
+  current.push(tech);
+  localStorage.setItem(TECHNICIANS_KEY, JSON.stringify(current));
+};
+
+export const deleteTechnician = (id: string) => {
+  const current = getTechnicians();
+  const filtered = current.filter(t => t.id !== id);
+  localStorage.setItem(TECHNICIANS_KEY, JSON.stringify(filtered));
 };
 
 export const saveCase = (newCase: InspectionCase) => {

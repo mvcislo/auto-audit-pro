@@ -65,6 +65,7 @@ export const analyzeInspection = async (
 
     parts.push({ text: promptText });
 
+    // Fixed: Using gemini-3-pro-preview for complex reasoning tasks as per guidelines.
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: { parts },
@@ -90,6 +91,7 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   const brand = getBrand();
   try {
+    // Fixed: Using gemini-3-flash-preview for document extraction and basic text processing.
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
@@ -107,11 +109,12 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
 };
 
 export const extractVINFromImage = async (base64: string): Promise<any> => {
-  // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used.
+  // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used right before the call.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   try {
+    // Fixed: Using gemini-2.5-flash-image for general vision tasks as per guidelines.
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },

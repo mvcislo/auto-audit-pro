@@ -1,7 +1,8 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Vehicle, InspectionData, InspectionType, OutcomeStatus, AnalysisMode } from '../types';
+import { Vehicle, InspectionData, InspectionType, OutcomeStatus, AnalysisMode, Appraiser, Technician } from '../types';
 import { decodeVIN, extractVINFromImage } from '../services/geminiService';
+import { getAppraisers, getTechnicians } from '../services/storageService';
 
 interface InspectionFormProps {
   onAnalyze: (vehicle: Vehicle, data: InspectionData, mode: AnalysisMode) => void;
@@ -15,6 +16,9 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
   const [isExtractingVin, setIsExtractingVin] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [appraiserList, setAppraiserList] = useState<Appraiser[]>([]);
+  const [technicianList, setTechnicianList] = useState<Technician[]>([]);
 
   const [vehicle, setVehicle] = useState<Vehicle>({
     vin: '',
@@ -39,6 +43,11 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     attachments: [],
     ...initialData
   });
+
+  useEffect(() => {
+    setAppraiserList(getAppraisers());
+    setTechnicianList(getTechnicians());
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -183,22 +192,48 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Technician Name</label>
-                <input className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold" value={data.technicianName} onChange={e => setData(d => ({ ...d, technicianName: e.target.value }))} placeholder="Mechanic Name" />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Technician (Select Mechanic)</label>
+                <select 
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-indigo-500"
+                  value={data.technicianName}
+                  onChange={e => setData(d => ({ ...d, technicianName: e.target.value }))}
+                >
+                  <option value="">Select Technician...</option>
+                  {technicianList.map(tech => (
+                    <option key={tech.id} value={tech.name}>
+                      {tech.name} (#{tech.techNumber})
+                    </option>
+                  ))}
+                </select>
+                {technicianList.length === 0 && (
+                  <p className="text-[8px] text-red-500 font-bold uppercase mt-1 ml-1">Add mechanics in the Library screen first.</p>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1.5 ml-1">Final Service Quote ($)</label>
-                <input type="number" className="w-full bg-indigo-50 border-2 border-indigo-200 rounded-2xl px-5 py-4 font-black text-indigo-700 text-base" value={data.serviceDepartmentEstimate} onChange={e => setData(d => ({ ...d, serviceDepartmentEstimate: parseFloat(e.target.value) || 0 }))} />
+                <input type="number" className="w-full bg-indigo-50 border-2 border-indigo-200 rounded-2xl px-5 py-4 font-black text-indigo-700 text-base outline-none" value={data.serviceDepartmentEstimate} onChange={e => setData(d => ({ ...d, serviceDepartmentEstimate: parseFloat(e.target.value) || 0 }))} />
               </div>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Appraiser Name</label>
-                <input className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold" value={data.appraiserName} onChange={e => setData(d => ({ ...d, appraiserName: e.target.value }))} placeholder="Manager Name" />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Appraiser (Select Manager)</label>
+                <select 
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-indigo-500"
+                  value={data.appraiserName}
+                  onChange={e => setData(d => ({ ...d, appraiserName: e.target.value }))}
+                >
+                  <option value="">Select Appraiser...</option>
+                  {appraiserList.map(app => (
+                    <option key={app.id} value={app.name}>{app.name}</option>
+                  ))}
+                </select>
+                {appraiserList.length === 0 && (
+                  <p className="text-[8px] text-red-500 font-bold uppercase mt-1 ml-1">Add appraisers in the Library screen first.</p>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Original Recon Budget ($)</label>
-                <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-base" value={data.managerAppraisalEstimate} onChange={e => setData(d => ({ ...d, managerAppraisalEstimate: parseFloat(e.target.value) || 0 }))} />
+                <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-base outline-none focus:border-indigo-500" value={data.managerAppraisalEstimate} onChange={e => setData(d => ({ ...d, managerAppraisalEstimate: parseFloat(e.target.value) || 0 }))} />
               </div>
             </div>
           </div>

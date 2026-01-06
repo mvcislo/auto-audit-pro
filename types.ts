@@ -18,6 +18,17 @@ export enum AnalysisMode {
   APPRAISAL = 'Appraisal Mode'
 }
 
+export interface Appraiser {
+  id: string;
+  name: string;
+}
+
+export interface Technician {
+  id: string;
+  name: string;
+  techNumber: string;
+}
+
 export interface StandardDocument {
   id: string;
   type: 'SAFETY' | 'HCUV' | 'DEALERSHIP' | 'HONDA_MAINTENANCE';
@@ -76,7 +87,7 @@ export interface HistoricalAggregates {
   totalCases: number;
 }
 
-// Fixed: Defined AIStudio interface to match the environment's expected type and resolve Window property conflicts.
+// Fixed: Corrected AIStudio interface and Window declaration to resolve modifier and type identity conflicts.
 export interface AIStudio {
   hasSelectedApiKey: () => Promise<boolean>;
   openSelectKey: () => Promise<void>;
@@ -84,6 +95,10 @@ export interface AIStudio {
 
 declare global {
   interface Window {
-    aistudio: AIStudio;
+    // Fixed: Inlining the type and making it optional to match the environment's pre-configured global declaration.
+    aistudio?: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
   }
 }
