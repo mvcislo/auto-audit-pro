@@ -5,8 +5,8 @@ import Dashboard from './components/Dashboard';
 import InspectionForm from './components/InspectionForm';
 import AnalysisView from './components/AnalysisView';
 import { Vehicle, InspectionData, InspectionCase, AnalysisMode } from './types';
-import { analyzeInspection, decodeVIN } from './services/geminiService';
-import { saveCase, getHistoricalContext } from './services/storageService';
+import { analyzeInspection } from './services/geminiService';
+import { saveCase, getHistoricalContext, getAllCases } from './services/storageService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'audit'>('dashboard');
@@ -22,12 +22,10 @@ const App: React.FC = () => {
       
       setCurrentAnalysis({ text: result.text, citations: result.citations });
 
-      // If AI found a total, we want to populate it back into the form if they edit
       if (result.detectedTotal) {
         setAutoFilledData({ serviceDepartmentEstimate: result.detectedTotal });
       }
 
-      // Save to persistence
       const newCase: InspectionCase = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
@@ -49,6 +47,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSelectCase = (c: InspectionCase) => {
+    setCurrentAnalysis({ 
+      text: c.analysis || "Report not found.", 
+      citations: [] 
+    });
+  };
+
   return (
     <div className="min-h-screen pb-20">
       <Header 
@@ -67,7 +72,7 @@ const App: React.FC = () => {
             onReset={() => setCurrentAnalysis(null)} 
           />
         ) : currentView === 'dashboard' ? (
-          <Dashboard />
+          <Dashboard onSelectCase={handleSelectCase} />
         ) : (
           <div className="max-w-3xl mx-auto">
             <div className="mb-8 text-center">
@@ -83,9 +88,8 @@ const App: React.FC = () => {
         )}
       </main>
       
-      {/* Mobile Sticky CTA */}
       {!currentAnalysis && currentView === 'dashboard' && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:hidden">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:hidden z-50">
           <button 
             onClick={() => setCurrentView('audit')}
             className="bg-indigo-600 text-white px-8 py-4 rounded-full font-black shadow-2xl shadow-indigo-200 flex items-center gap-2"

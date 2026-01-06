@@ -1,9 +1,8 @@
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { InspectionCase, HistoricalAggregates, AnalysisMode } from '../types';
 
 // The API Key is obtained exclusively from process.env.API_KEY.
-// TypeScript recognizes 'process' now because of the updated types and configuration.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
 const SYSTEM_INSTRUCTION = `You are the Lead Auditor for a high-volume Honda Dealership specializing in Ontario Safety Standards and HCUV.
@@ -24,20 +23,20 @@ OUTPUT STRUCTURE:
 - 🛠️ REQUIRED vs. RECOMMENDED: Table format.
 - 💬 MANAGER'S COMBAT CHECKLIST: Specific questions to ask the tech to prove the failure.
 
-IMPORTANT: Place [DETECTED_TOTAL: 1234.56] at the very end.`;
+IMPORTANT: Place [DETECTED_TOTAL: 1234.56] at the very end of your response.`;
 
 export const analyzeInspection = async (
-  currentCase: InspectionCase, 
+  currentCase: any, 
   history: HistoricalAggregates | null,
   mode: AnalysisMode
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
   const { vehicle, data } = currentCase;
-  const contents: any[] = [];
+  const parts: any[] = [];
   
   const attachments = data.attachments || [];
-  attachments.forEach(base64 => {
+  attachments.forEach((base64: string) => {
     if (base64 && base64.includes(',')) {
-      contents.push({
+      parts.push({
         inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] }
       });
     }
@@ -50,14 +49,14 @@ export const analyzeInspection = async (
     APPRAISER OBSERVATIONS: ${data.appraiserNotes}
     TECHNICIAN CLAIM: ${data.technicianNotes}
     
-    TASK: Audit this quote. Flag unnecessary maintenance presented as safety.
+    TASK: Audit this quote. Flag unnecessary maintenance presented as safety. Check if the tech is padding hours based on the attached images.
   `;
 
-  contents.push({ text: prompt });
+  parts.push({ text: prompt });
 
   const response: GenerateContentResponse = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
-    contents: { parts: contents },
+    contents: { parts },
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
       tools: [{ googleSearch: {} }]
@@ -70,6 +69,45 @@ export const analyzeInspection = async (
   const detectedTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : undefined;
 
   return { text: fullText, detectedTotal, citations };
+};
+
+export const extractVINFromImage = async (base64: string): Promise<{ vin: string; year?: number; make?: string; model?: string } | null> => {
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64.split(',')[1]
+            }
+          },
+          { text: "Extract the 17-character VIN and vehicle details (Year, Make, Model) from this photo. Return JSON." }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            vin: { type: Type.STRING },
+            year: { type: Type.INTEGER },
+            make: { type: Type.STRING },
+            model: { type: Type.STRING }
+          },
+          required: ["vin"]
+        }
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) return null;
+    return JSON.parse(resultText);
+  } catch (e) {
+    console.error("VIN Extraction Error:", e);
+    return null;
+  }
 };
 
 export const decodeVIN = async (vin: string): Promise<any> => {
