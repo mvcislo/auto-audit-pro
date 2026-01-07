@@ -6,11 +6,13 @@ import { getStandards, getTechnicianProfiles, getBrand } from './storageService'
 const getSystemInstruction = () => {
   const brand = getBrand();
   return `You are the Lead Auditor for a high-volume ${brand} Dealership.
-YOUR MISSION: Protect Dealership Gross Margin.
-STRATEGY:
-- If a Tech fails an item without a specific measurement (e.g. "Needs brakes" vs "3mm"), flag as UNVERIFIED.
-- Compare Tech claims against the uploaded Dealership Standard Library and ${brand} CPO guidelines.
-- Be highly skeptical of "Aggressive" technicians who have high historical variance.`;
+YOUR MISSION: Protect Dealership Gross Margin by identifying discrepancies between Appraiser intake notes and Technician service quotes.
+
+STRATEGIC RULES:
+- "CLEAN CAR" RULE: If an Appraiser notes a car is "Clean", this refers to its overall condition and preservation. It DOES NOT mean the vehicle is ready for the lot. Every retail unit requires a Professional Detail. If a Tech quotes a Detail and the Appraiser called it "Clean", this is NOT a discrepancy.
+- DISCREPANCY AUDIT: If the Appraiser noted "Brakes feel good" but the Tech quotes "4-wheel brake job", flag this for a mandatory measurement verification.
+- Skepticism: Be highly skeptical of "Aggressive" technicians who have high historical variance.
+- Citations: Reference the specific uploaded standards when flagging a failure.`;
 };
 
 export const analyzeInspection = async (
@@ -19,8 +21,8 @@ export const analyzeInspection = async (
   mode: AnalysisMode
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
   try {
-    // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    // Always initialize GoogleGenAI inside the function to use the latest API key.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const { vehicle, data } = currentCase;
     const standards = getStandards();
     const techStats = getTechnicianProfiles().find(t => t.technicianName === data.technicianName);
@@ -41,31 +43,33 @@ export const analyzeInspection = async (
     const libraryContext = standards.map(s => `[${s.type} STANDARD]: ${s.extractedRules}`).join('\n\n');
 
     const promptText = `
-      --- DEALERSHIP IDENTITY ---
-      Primary Brand: ${brand}
+      --- DEALERSHIP CONTEXT ---
+      Brand: ${brand}
+      
+      --- APPRAISER VS TECHNICIAN DATA ---
+      APPRAISER (${data.appraiserName}) NOTES: "${data.appraiserNotes || 'No notes provided'}"
+      TECHNICIAN (${data.technicianName}) NOTES: "${data.technicianNotes || 'No notes provided'}"
+      
+      ESTIMATED RECON: $${data.managerAppraisalEstimate}
+      ACTUAL TECH QUOTE: $${data.serviceDepartmentEstimate}
+      VARIANCE: $${data.serviceDepartmentEstimate - data.managerAppraisalEstimate}
 
       --- GROUND TRUTH LIBRARY ---
       ${libraryContext}
 
       --- HISTORICAL LEARNING ---
-      Technician ${data.technicianName} Reliability: ${techStats?.reliabilityTag || 'Unknown'} (Avg Variance: $${techStats?.avgVariance || 0})
-      Model Average Recon for ${vehicle.year} ${vehicle.model}: $${history?.avgReconCost || 'N/A'}
+      Tech Reliability: ${techStats?.reliabilityTag || 'Unknown'} (Avg Variance: $${techStats?.avgVariance || 0})
+      Model Avg Recon: $${history?.avgReconCost || 'N/A'}
 
-      --- CURRENT CASE ---
-      VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.kilometres} km)
-      APPRAISER: ${data.appraiserName} | TECH: ${data.technicianName}
-      ESTIMATED RECON: $${data.managerAppraisalEstimate} | ACTUAL QUOTE: $${data.serviceDepartmentEstimate}
-      APPRAISER NOTES: ${data.appraiserNotes}
-      TECH NOTES: ${data.technicianNotes}
-      
-      TASK: Audit the Service Dept Estimate against the Ground Truth Library and ${brand} CPO standards. 
-      Flag every item that does not meet the strict threshold for PASS/FAIL.
-      Place [DETECTED_TOTAL: 1234.56] at the very end.
+      TASK:
+      1. Perform a "Note Comparison". Look for contradictions between what the appraiser felt/saw and what the tech is charging for.
+      2. Apply the "Clean Car" logic: If appraiser said "Clean" but tech quoted a detail, validate the detail as a standard retail necessity.
+      3. Create a "Push-back" section if the tech is quoting major items that the appraiser explicitly noted as "New" or "Good".
+      4. Place [DETECTED_TOTAL: 1234.56] at the very end.
     `;
 
     parts.push({ text: promptText });
 
-    // Fixed: Using gemini-3-pro-preview for complex reasoning tasks as per guidelines.
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: { parts },
@@ -87,17 +91,15 @@ export const analyzeInspection = async (
 };
 
 export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
-  // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const brand = getBrand();
   try {
-    // Fixed: Using gemini-3-flash-preview for document extraction and basic text processing.
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
-          { text: `Extract all technical PASS/FAIL thresholds from this ${brand} ${type} manual. Focus on measurements, labor hours, and specific mechanical criteria. Format as a concise, structured rule-set for an AI auditor.` }
+          { text: `Extract technical PASS/FAIL thresholds from this ${brand} manual. Format as concise rules for an AI auditor.` }
         ]
       }
     });
@@ -109,33 +111,32 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
 };
 
 export const extractVINFromImage = async (base64: string): Promise<any> => {
-  // Fixed: Initializing GoogleGenAI inside the function to ensure the correct API key is used right before the call.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-    // Fixed: Using gemini-2.5-flash-image for general vision tasks as per guidelines.
+    // Fixed: Removed responseMimeType and responseSchema for gemini-2.5-flash-image as they are not supported for nano banana series models.
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
-          { text: "Extract VIN and vehicle details (Year, Make, Model). Return valid JSON." }
+          { text: "Extract VIN and vehicle details (Year, Make, Model). Return valid JSON object with keys: vin, year, make, model." }
         ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            vin: { type: Type.STRING },
-            year: { type: Type.INTEGER },
-            make: { type: Type.STRING },
-            model: { type: Type.STRING }
-          }
-        }
       }
     });
-    return JSON.parse(response.text || '{}');
-  } catch (e) { return null; }
+    
+    // Extract JSON manually from the response text since responseSchema is prohibited for this model.
+    const text = response.text || '{}';
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}') + 1;
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      const jsonStr = text.substring(jsonStart, jsonEnd);
+      return JSON.parse(jsonStr);
+    }
+    return null;
+  } catch (e) { 
+    console.error("VIN Extraction Error:", e);
+    return null; 
+  }
 };
 
 export const decodeVIN = async (vin: string): Promise<any> => {

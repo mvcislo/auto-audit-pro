@@ -95,10 +95,7 @@ export interface AIStudio {
 
 declare global {
   interface Window {
-    // Fixed: Inlining the type and making it optional to match the environment's pre-configured global declaration.
-    aistudio?: {
-      hasSelectedApiKey: () => Promise<boolean>;
-      openSelectKey: () => Promise<void>;
-    };
+    // Fixed: Using the AIStudio interface explicitly to match the pre-configured global declaration and resolve the type conflict.
+    aistudio: AIStudio;
   }
 }

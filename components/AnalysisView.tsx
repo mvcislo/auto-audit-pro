@@ -29,7 +29,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
         return <p key={i} className="mb-2 text-sm text-slate-700 leading-relaxed print:text-[10px] print:mb-1">{parts.map((p, j) => j % 2 === 1 ? <strong key={j} className="text-slate-900 font-bold">{p}</strong> : p)}</p>;
       }
       
-      if (line.includes("MANAGER'S COMBAT CHECKLIST") || line.includes("Push-back") || line.includes("🚨")) {
+      if (line.includes("MANAGER'S COMBAT CHECKLIST") || line.includes("Push-back") || line.includes("🚨") || line.includes("DISCREPANCY")) {
          return <div key={i} className="bg-red-50 border-l-4 border-red-600 p-4 rounded-r-xl my-4 text-red-900 font-bold text-sm break-inside-avoid print:my-2 print:p-2 print:text-[10px] print:bg-slate-50 print:border-red-400">
            {line}
          </div>;
@@ -83,26 +83,15 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
         {showSource && caseData && (
           <div className="lg:col-span-4 space-y-4 no-print sticky top-40 animate-in slide-in-from-left-4 duration-300">
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Case Identity</h4>
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Observation Comparison</h4>
               <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">
-                    <i className="fas fa-car"></i>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-slate-900 leading-tight">{caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}</p>
-                    <p className="text-[10px] font-mono text-slate-400">{caseData.vehicle.vin}</p>
-                  </div>
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                  <p className="text-[9px] font-black text-emerald-700 uppercase mb-1">Appraiser Intake</p>
+                  <p className="text-xs italic text-emerald-900">"{caseData.data.appraiserNotes || 'No notes'}"</p>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Mileage</p>
-                    <p className="text-xs font-bold text-slate-700">{caseData.vehicle.kilometres.toLocaleString()} km</p>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Tech</p>
-                    <p className="text-xs font-bold text-slate-700">{caseData.data.technicianName || 'N/A'}</p>
-                  </div>
+                <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                  <p className="text-[9px] font-black text-indigo-700 uppercase mb-1">Technician Quote</p>
+                  <p className="text-xs italic text-indigo-900">"{caseData.data.technicianNotes || 'No notes'}"</p>
                 </div>
               </div>
             </div>
@@ -152,46 +141,21 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
                     <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Vehicle Profile</h5>
                     <p className="text-sm font-black text-slate-900 m-0">{caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}</p>
                     <p className="text-[10px] font-mono font-bold text-slate-500 m-0">{caseData.vehicle.vin}</p>
-                    <p className="text-[10px] font-bold text-slate-700 m-0 mt-1">{caseData.vehicle.kilometres.toLocaleString()} KM | {caseData.vehicle.acquisitionType}</p>
+                    <p className="text-[10px] font-bold text-slate-700 m-0 mt-1">{caseData.vehicle.kilometres.toLocaleString()} KM</p>
                   </div>
-                  <div>
-                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Personnel</h5>
-                    <p className="text-xs font-bold text-slate-700 m-0">Technician: <span className="text-slate-900">{caseData.data.technicianName || 'N/A'}</span></p>
-                    <p className="text-xs font-bold text-slate-700 m-0">Appraiser: <span className="text-slate-900">{caseData.data.appraiserName || 'N/A'}</span></p>
-                    <p className="text-xs font-bold text-slate-700 m-0 mt-1">Audit Type: <span className="text-slate-900">{caseData.data.type}</span></p>
-                  </div>
-                  <div>
-                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Financials</h5>
-                    <div className="flex justify-between text-xs font-bold">
-                      <span>Original Budget:</span>
-                      <span className="text-slate-900">${caseData.data.managerAppraisalEstimate.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-black">
-                      <span>Service Quote:</span>
-                      <span className="text-indigo-700">${caseData.data.serviceDepartmentEstimate.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-black border-t border-slate-300 mt-1 pt-1">
-                      <span>Gross Leakage:</span>
-                      <span className="text-red-600">-${Math.abs(caseData.data.serviceDepartmentEstimate - caseData.data.managerAppraisalEstimate).toLocaleString()}</span>
+                  <div className="col-span-2">
+                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Observation Contrast</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white p-2 border border-slate-200 rounded">
+                         <p className="text-[8px] font-black text-emerald-600 uppercase mb-1">Manager Intake</p>
+                         <p className="text-[9px] italic m-0">"{caseData.data.appraiserNotes}"</p>
+                      </div>
+                      <div className="bg-white p-2 border border-slate-200 rounded">
+                         <p className="text-[8px] font-black text-indigo-600 uppercase mb-1">Service Quote</p>
+                         <p className="text-[9px] italic m-0">"{caseData.data.technicianNotes}"</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {caseData && (caseData.data.technicianNotes || caseData.data.appraiserNotes) && (
-                <div className="grid grid-cols-2 gap-8 mb-6">
-                  {caseData.data.technicianNotes && (
-                    <div>
-                      <h5 className="text-[9px] font-black uppercase text-slate-400 mb-1">Technician Input</h5>
-                      <p className="text-[10px] italic text-slate-700 leading-relaxed border-l-2 border-slate-200 pl-3">{caseData.data.technicianNotes}</p>
-                    </div>
-                  )}
-                  {caseData.data.appraiserNotes && (
-                    <div>
-                      <h5 className="text-[9px] font-black uppercase text-slate-400 mb-1">Appraiser Input</h5>
-                      <p className="text-[10px] italic text-slate-700 leading-relaxed border-l-2 border-slate-200 pl-3">{caseData.data.appraiserNotes}</p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -213,14 +177,6 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
                 </div>
               </div>
             )}
-          </div>
-          
-          <div className="mt-8 text-center text-[10px] text-slate-400 no-print pb-10 uppercase tracking-widest font-bold">
-            <p>Report generated via AutoAudit Pro. Analysis cross-referenced against saved Dealership Knowledge Base.</p>
-          </div>
-          
-          <div className="hidden print:block mt-12 text-center text-[9px] text-slate-400 uppercase tracking-widest font-bold border-t border-slate-100 pt-4">
-            <p>End of Audit Report. Classified Document - Internal Use Only.</p>
           </div>
         </div>
       </div>
