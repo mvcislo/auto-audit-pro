@@ -8,20 +8,21 @@ const getSystemInstruction = () => {
   return `You are the Lead Auditor for a high-volume ${brand} Dealership.
 YOUR MISSION: Protect Dealership Gross Margin by identifying discrepancies between Appraiser intake notes and Technician service quotes.
 
-STRATEGIC RULES:
-- "CLEAN CAR" RULE: If an Appraiser notes a car is "Clean", this refers to its overall condition and preservation. It DOES NOT mean the vehicle is ready for the lot. Every retail unit requires a Professional Detail. If a Tech quotes a Detail and the Appraiser called it "Clean", this is NOT a discrepancy.
-- DISCREPANCY AUDIT: If the Appraiser noted "Brakes feel good" but the Tech quotes "4-wheel brake job", flag this for a mandatory measurement verification.
-- Skepticism: Be highly skeptical of "Aggressive" technicians who have high historical variance.
-- Citations: Reference the specific uploaded standards when flagging a failure.`;
+STRATEGIC AUDIT RULES:
+1. "CLEAN CAR" INTERPRETATION: If an Appraiser notes a car is "Clean", they are describing the preservation and cosmetic integrity of the vehicle (it was well-kept). This DOES NOT mean the vehicle is ready for retail sale. Every retail unit requires a Professional Detail ($200-$400 depending on region). If a Tech quotes a "Detail" and the Appraiser called the car "Clean", this is EXPECTED and is NOT a discrepancy.
+2. DISCREPANCY AUDIT: If the Appraiser noted "Brakes feel firm/new" but the Tech quotes a "Full Brake Job", flag this as a critical variance and demand measurement verification.
+3. Skepticism: Be highly skeptical of "Aggressive" technicians who have high historical variance.
+4. Citations: Reference the specific uploaded standards when flagging a failure.
+5. Tone: Be professional, firm, and focused on data-driven gross protection.`;
 };
 
+// Perform complex reasoning audit using Gemini 3 Pro.
 export const analyzeInspection = async (
   currentCase: any, 
   history: HistoricalAggregates | null,
   mode: AnalysisMode
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
   try {
-    // Always initialize GoogleGenAI inside the function to use the latest API key.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const { vehicle, data } = currentCase;
     const standards = getStandards();
@@ -46,12 +47,13 @@ export const analyzeInspection = async (
       --- DEALERSHIP CONTEXT ---
       Brand: ${brand}
       
-      --- APPRAISER VS TECHNICIAN DATA ---
-      APPRAISER (${data.appraiserName}) NOTES: "${data.appraiserNotes || 'No notes provided'}"
-      TECHNICIAN (${data.technicianName}) NOTES: "${data.technicianNotes || 'No notes provided'}"
+      --- NARRATIVE CONTRAST ---
+      APPRAISER (${data.appraiserName}) INTAKE NOTES: "${data.appraiserNotes || 'No notes provided'}"
+      TECHNICIAN (${data.technicianName}) REPAIR JUSTIFICATION: "${data.technicianNotes || 'No notes provided'}"
       
-      ESTIMATED RECON: $${data.managerAppraisalEstimate}
-      ACTUAL TECH QUOTE: $${data.serviceDepartmentEstimate}
+      --- FINANCIAL DATA ---
+      MGR RECON BUDGET: $${data.managerAppraisalEstimate}
+      TECH SERVICE QUOTE: $${data.serviceDepartmentEstimate}
       VARIANCE: $${data.serviceDepartmentEstimate - data.managerAppraisalEstimate}
 
       --- GROUND TRUTH LIBRARY ---
@@ -59,13 +61,13 @@ export const analyzeInspection = async (
 
       --- HISTORICAL LEARNING ---
       Tech Reliability: ${techStats?.reliabilityTag || 'Unknown'} (Avg Variance: $${techStats?.avgVariance || 0})
-      Model Avg Recon: $${history?.avgReconCost || 'N/A'}
+      Model Avg Recon Cost: $${history?.avgReconCost || 'N/A'}
 
       TASK:
-      1. Perform a "Note Comparison". Look for contradictions between what the appraiser felt/saw and what the tech is charging for.
-      2. Apply the "Clean Car" logic: If appraiser said "Clean" but tech quoted a detail, validate the detail as a standard retail necessity.
-      3. Create a "Push-back" section if the tech is quoting major items that the appraiser explicitly noted as "New" or "Good".
-      4. Place [DETECTED_TOTAL: 1234.56] at the very end.
+      1. Perform a "Narrative Contrast Analysis". Compare the Appraiser's intake notes vs the Tech's repair list.
+      2. Apply the "Clean Car Rule": Validate that "Clean" != "No Detail Required".
+      3. Identify "Ghost Repairs": Items added by the tech that contradict the appraiser's explicitly positive notes.
+      4. Place [DETECTED_TOTAL: 1234.56] at the very end as the "Verified Recon Amount".
     `;
 
     parts.push({ text: promptText });
@@ -90,6 +92,7 @@ export const analyzeInspection = async (
   }
 };
 
+// Digest technical documents using Gemini 3 Flash.
 export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const brand = getBrand();
@@ -110,12 +113,12 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
   }
 };
 
+// Extract VIN and vehicle info from images using Gemini 3 Flash.
 export const extractVINFromImage = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-    // Fixed: Removed responseMimeType and responseSchema for gemini-2.5-flash-image as they are not supported for nano banana series models.
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
@@ -124,7 +127,6 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
       }
     });
     
-    // Extract JSON manually from the response text since responseSchema is prohibited for this model.
     const text = response.text || '{}';
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}') + 1;
@@ -139,6 +141,7 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
   }
 };
 
+// Standard external API call for VIN decoding.
 export const decodeVIN = async (vin: string): Promise<any> => {
   try {
     const response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`);

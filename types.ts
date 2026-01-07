@@ -87,15 +87,17 @@ export interface HistoricalAggregates {
   totalCases: number;
 }
 
-// Fixed: Corrected AIStudio interface and Window declaration to resolve modifier and type identity conflicts.
-export interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
+/**
+ * Global declaration to match the pre-configured environment.
+ * The optional modifier and global scope interface resolve declaration merging conflicts.
+ */
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
   interface Window {
-    // Fixed: Using the AIStudio interface explicitly to match the pre-configured global declaration and resolve the type conflict.
-    aistudio: AIStudio;
+    aistudio?: AIStudio;
   }
 }

@@ -188,37 +188,52 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
         </section>
 
         <section>
-          <h3 className="text-sm font-black text-slate-800 uppercase mb-4">2. Financial Accountability</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <h3 className="text-sm font-black text-slate-800 uppercase mb-4">2. Accountability & Narrative Comparison</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Technician Section */}
+            <div className="space-y-4 p-6 bg-indigo-50/30 rounded-3xl border border-indigo-100">
+              <div className="flex items-center gap-2 mb-2">
+                <i className="fas fa-wrench text-indigo-600"></i>
+                <h4 className="text-[10px] font-black text-indigo-700 uppercase">Service Findings</h4>
+              </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Technician (Select Mechanic)</label>
+                <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1 ml-1">Mechanic</label>
                 <select 
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-indigo-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
                   value={data.technicianName}
                   onChange={e => setData(d => ({ ...d, technicianName: e.target.value }))}
                 >
                   <option value="">Select Technician...</option>
                   {technicianList.map(tech => (
-                    <option key={tech.id} value={tech.name}>
-                      {tech.name} (#{tech.techNumber})
-                    </option>
+                    <option key={tech.id} value={tech.name}>{tech.name} (#{tech.techNumber})</option>
                   ))}
                 </select>
-                {technicianList.length === 0 && (
-                  <p className="text-[8px] text-red-500 font-bold uppercase mt-1 ml-1">Add mechanics in the Library screen first.</p>
-                )}
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1.5 ml-1">Final Service Quote ($)</label>
-                <input type="number" className="w-full bg-indigo-50 border-2 border-indigo-200 rounded-2xl px-5 py-4 font-black text-indigo-700 text-base outline-none" value={data.serviceDepartmentEstimate} onChange={e => setData(d => ({ ...d, serviceDepartmentEstimate: parseFloat(e.target.value) || 0 }))} />
+                <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1 ml-1">Service Quote ($)</label>
+                <input type="number" className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 font-black text-indigo-700 text-base outline-none" value={data.serviceDepartmentEstimate} onChange={e => setData(d => ({ ...d, serviceDepartmentEstimate: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1 ml-1">Repair Justification / Notes</label>
+                <textarea 
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-medium min-h-[100px] outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. Front brakes at 3mm, subframe rust noted, full retail detail required..."
+                  value={data.technicianNotes}
+                  onChange={e => setData(d => ({ ...d, technicianNotes: e.target.value }))}
+                />
               </div>
             </div>
-            <div className="space-y-4">
+
+            {/* Appraiser Section */}
+            <div className="space-y-4 p-6 bg-emerald-50/30 rounded-3xl border border-emerald-100">
+              <div className="flex items-center gap-2 mb-2">
+                <i className="fas fa-user-tie text-emerald-600"></i>
+                <h4 className="text-[10px] font-black text-emerald-700 uppercase">Intake Observations</h4>
+              </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Appraiser (Select Manager)</label>
+                <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1 ml-1">Appraising Manager</label>
                 <select 
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-indigo-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   value={data.appraiserName}
                   onChange={e => setData(d => ({ ...d, appraiserName: e.target.value }))}
                 >
@@ -227,13 +242,19 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
                     <option key={app.id} value={app.name}>{app.name}</option>
                   ))}
                 </select>
-                {appraiserList.length === 0 && (
-                  <p className="text-[8px] text-red-500 font-bold uppercase mt-1 ml-1">Add appraisers in the Library screen first.</p>
-                )}
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Original Recon Budget ($)</label>
-                <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-base outline-none focus:border-indigo-500" value={data.managerAppraisalEstimate} onChange={e => setData(d => ({ ...d, managerAppraisalEstimate: parseFloat(e.target.value) || 0 }))} />
+                <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1 ml-1">Original Recon Budget ($)</label>
+                <input type="number" className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-3 font-black text-emerald-700 text-base outline-none" value={data.managerAppraisalEstimate} onChange={e => setData(d => ({ ...d, managerAppraisalEstimate: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1 ml-1">Condition Notes (Intake)</label>
+                <textarea 
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-medium min-h-[100px] outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. Very clean car, feels solid on road, brakes feel firm, trade-in from older customer..."
+                  value={data.appraiserNotes}
+                  onChange={e => setData(d => ({ ...d, appraiserNotes: e.target.value }))}
+                />
               </div>
             </div>
           </div>
