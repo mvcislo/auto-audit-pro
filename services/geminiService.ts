@@ -8,10 +8,10 @@ const getSystemInstruction = (mode: AnalysisMode) => {
   
   if (mode === AnalysisMode.APPRAISAL) {
     return `You are the Lead Appraiser and Recon Specialist for a high-volume ${brand} dealership.
-YOUR MISSION: Calculate a highly accurate Reconditioning Estimate based solely on intake notes.
+YOUR MISSION: Calculate a highly accurate Reconditioning Estimate based solely on manager intake notes.
 
 MANDATORY RETAIL PREP PACKAGE (ALWAYS INCLUDE):
-- Safety Inspection Fee: $200
+- Ontario Safety Inspection Fee: $200
 - 4-Wheel Balance: $80
 - 4-Wheel Alignment: $140
 - Professional Detail: $250
@@ -22,16 +22,18 @@ STRATEGY:
 2. Analyze Appraiser Notes for specific wear items (e.g., "tires low", "brakes pulsing", "dent on hood").
 3. Estimate repairs using market-rate labor/parts for this specific vehicle.
 4. If Appraiser says "CLEAN", assume zero additional mechanical repairs beyond the Fixed Base.
-5. Provide a breakdown of these costs.`;
+5. Provide a clear, categorized breakdown of these costs.
+6. Place [DETECTED_TOTAL: 1234.56] at the very end of your response.`;
   }
 
   return `You are the Lead Auditor for a high-volume ${brand} Dealership.
 YOUR MISSION: Protect Dealership Gross Margin by identifying discrepancies between Appraiser intake notes and Technician service quotes.
 
 STRATEGIC AUDIT RULES:
-1. "CLEAN CAR" RULE: If an Appraiser notes a car is "Clean", this refers to its overall condition. It DOES NOT mean the vehicle skips the detail. Every retail unit requires a Professional Detail.
-2. DISCREPANCY AUDIT: If Appraiser says "Brakes feel new" but Tech quotes "Brake Job", flag it.
-3. Citations: Reference the specific uploaded standards when flagging a failure.`;
+1. "CLEAN CAR" RULE: If an Appraiser notes a car is "Clean", this refers to its overall condition. It DOES NOT mean the vehicle skips the detail. Every retail unit requires a Professional Detail ($250).
+2. DISCREPANCY AUDIT: If Appraiser says "Brakes feel new" but Tech quotes "Brake Job", flag it as a potential gross leak.
+3. Citations: Reference specific manufacturer standards when flagging a failure.
+4. Place [DETECTED_TOTAL: 1234.56] at the very end.`;
 };
 
 export const analyzeInspection = async (
@@ -42,8 +44,6 @@ export const analyzeInspection = async (
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const { vehicle, data } = currentCase;
-    const standards = getStandards();
-    const brand = getBrand();
     
     const parts: any[] = [];
     
@@ -56,8 +56,6 @@ export const analyzeInspection = async (
       }
     });
 
-    const libraryContext = standards.map(s => `[${s.type} STANDARD]: ${s.extractedRules}`).join('\n\n');
-
     let promptText = '';
     
     if (mode === AnalysisMode.APPRAISAL) {
@@ -66,14 +64,9 @@ export const analyzeInspection = async (
         VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.kilometres} km)
         APPRAISER NOTES: "${data.appraiserNotes || 'No notes provided'}"
         
-        GOAL: Calculate total estimated recon. 
-        Start with the $670 Mandatory Base (Safety, Balance, Alignment, Detail).
-        Add estimated costs for any mechanical or cosmetic issues found in the Appraiser Notes.
-        
-        Place [DETECTED_TOTAL: 1234.56] at the very end.
+        GOAL: Calculate total estimated recon starting with the $670 Mandatory Base.
       `;
     } else {
-      const techStats = getTechnicianProfiles().find(t => t.technicianName === data.technicianName);
       promptText = `
         --- AUDIT TASK ---
         APPRAISER NOTES: "${data.appraiserNotes}"
@@ -81,7 +74,6 @@ export const analyzeInspection = async (
         MGR BUDGET: $${data.managerAppraisalEstimate} | TECH QUOTE: $${data.serviceDepartmentEstimate}
         
         Compare these notes and flag discrepancies.
-        Place [DETECTED_TOTAL: 1234.56] at the very end.
       `;
     }
 
@@ -107,23 +99,6 @@ export const analyzeInspection = async (
   }
 };
 
-export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const brand = getBrand();
-  try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
-          { text: `Extract technical PASS/FAIL thresholds from this ${brand} manual.` }
-        ]
-      }
-    });
-    return response.text || "Failed to digest document.";
-  } catch (e) { return "Extraction error."; }
-};
-
 export const extractVINFromImage = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
@@ -132,7 +107,7 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
-          { text: "Extract VIN and vehicle details (Year, Make, Model). Return valid JSON object with keys: vin, year, make, model." }
+          { text: "Extract the 17-digit VIN from this image. Also identify Year, Make, and Model if visible. Return as a JSON object with keys: vin, year, make, model." }
         ]
       }
     });
@@ -155,4 +130,20 @@ export const decodeVIN = async (vin: string): Promise<any> => {
       model: results.find((r: any) => r.Variable === 'Model')?.Value,
     };
   } catch (e) { return null; }
+};
+
+export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
+          { text: "Extract technical pass/fail criteria from this inspection standard document." }
+        ]
+      }
+    });
+    return response.text || "Failed to digest document.";
+  } catch (e) { return "Extraction error."; }
 };

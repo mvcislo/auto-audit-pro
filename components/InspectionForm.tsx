@@ -91,13 +91,16 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
       const base64 = canvasRef.current.toDataURL('image/jpeg');
       stopScanner();
       setIsExtractingVin(true);
-      const result = await extractVINFromImage(base64);
-      if (result?.vin) {
-        setVehicle(v => ({ ...v, ...result }));
-        const decoded = await decodeVIN(result.vin);
-        if (decoded) setVehicle(v => ({ ...v, ...decoded }));
+      try {
+        const result = await extractVINFromImage(base64);
+        if (result?.vin) {
+          setVehicle(v => ({ ...v, ...result }));
+          const decoded = await decodeVIN(result.vin);
+          if (decoded) setVehicle(v => ({ ...v, ...decoded }));
+        }
+      } finally {
+        setIsExtractingVin(false);
       }
-      setIsExtractingVin(false);
     }
   };
 
@@ -117,9 +120,6 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
         <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
           <div className="relative w-full max-w-md aspect-[3/4] border-2 border-indigo-500 overflow-hidden rounded-3xl">
             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-64 h-16 border-2 border-white/50 rounded bg-indigo-500/10 shadow-[0_0_20px_rgba(255,255,255,0.3)]"></div>
-            </div>
           </div>
           <div className="mt-8 flex gap-4">
             <button type="button" onClick={stopScanner} className="px-6 py-3 bg-white/10 text-white rounded-xl font-bold uppercase">Cancel</button>
@@ -156,6 +156,20 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
               <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-base outline-none focus:border-indigo-500" value={vehicle.kilometres} onChange={e => setVehicle(v => ({ ...v, kilometres: parseInt(e.target.value) || 0 }))} />
             </div>
           </div>
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="p-4 bg-slate-100/50 rounded-2xl border border-slate-100 text-center">
+              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Year</p>
+              <p className="text-sm font-black text-slate-900">{vehicle.year || '----'}</p>
+            </div>
+            <div className="p-4 bg-slate-100/50 rounded-2xl border border-slate-100 text-center">
+              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Make</p>
+              <p className="text-sm font-black text-slate-900 truncate">{vehicle.make || '---'}</p>
+            </div>
+            <div className="p-4 bg-slate-100/50 rounded-2xl border border-slate-100 text-center">
+              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Model</p>
+              <p className="text-sm font-black text-slate-900 truncate">{vehicle.model || '---'}</p>
+            </div>
+          </div>
         </section>
 
         <section>
@@ -163,7 +177,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
             {mode === AnalysisMode.APPRAISAL ? '2. Appraisal Condition Notes' : '2. Audit Accountability'}
           </h3>
           <div className={`grid grid-cols-1 ${mode === AnalysisMode.AUDIT ? 'md:grid-cols-2' : ''} gap-8`}>
-            {/* Technician Section - ONLY SHOW IN AUDIT MODE */}
+            {/* Technician Section - HIDDEN IN APPRAISAL MODE */}
             {mode === AnalysisMode.AUDIT && (
               <div className="space-y-4 p-6 bg-indigo-50/30 rounded-3xl border border-indigo-100 animate-in fade-in slide-in-from-left-2">
                 <div className="flex items-center gap-2 mb-2">
@@ -200,7 +214,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
             )}
 
             {/* Appraiser Section - ALWAYS SHOWN */}
-            <div className={`space-y-4 p-6 ${mode === AnalysisMode.APPRAISAL ? 'bg-white border-2 border-emerald-500 shadow-emerald-50' : 'bg-emerald-50/30 border border-emerald-100'} rounded-3xl transition-all`}>
+            <div className={`space-y-4 p-6 ${mode === AnalysisMode.APPRAISAL ? 'bg-white border-2 border-emerald-500 shadow-xl' : 'bg-emerald-50/30 border border-emerald-100'} rounded-3xl transition-all`}>
               <div className="flex items-center gap-2 mb-2">
                 <i className="fas fa-user-tie text-emerald-600"></i>
                 <h4 className="text-[10px] font-black text-emerald-700 uppercase">Manager Intake Notes</h4>
@@ -219,10 +233,12 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Self-Estimate ($)</label>
-                  <input type="number" className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-3 font-black text-emerald-700 text-base outline-none" value={data.managerAppraisalEstimate} onChange={e => setData(d => ({ ...d, managerAppraisalEstimate: parseFloat(e.target.value) || 0 }))} />
-                </div>
+                {mode === AnalysisMode.AUDIT && (
+                  <div>
+                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Self-Estimate ($)</label>
+                    <input type="number" className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-3 font-black text-emerald-700 text-base outline-none" value={data.managerAppraisalEstimate} onChange={e => setData(d => ({ ...d, managerAppraisalEstimate: parseFloat(e.target.value) || 0 }))} />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Condition Observation</label>
@@ -236,7 +252,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
               {mode === AnalysisMode.APPRAISAL && (
                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                   <p className="text-[9px] font-black text-emerald-800 uppercase leading-relaxed">
-                    <i className="fas fa-info-circle mr-1"></i> AI will automatically include: 
+                    <i className="fas fa-info-circle mr-1"></i> AI automatically includes $670 Standard Base: 
                     Safety ($200), Balance ($80), Alignment ($140), and Detail ($250).
                   </p>
                 </div>
@@ -271,7 +287,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
           )}
         </section>
 
-        <button disabled={isLoading || !vehicle.vin} className={`w-full py-6 rounded-3xl font-black text-white shadow-2xl transition-all transform hover:scale-[0.98] ${mode === AnalysisMode.AUDIT ? 'bg-indigo-600 shadow-indigo-200' : 'bg-emerald-600 shadow-emerald-200'} ${(isLoading || !vehicle.vin) ? 'opacity-50 grayscale' : ''}`}>
+        <button disabled={isLoading || !vehicle.vin} className={`w-full py-6 rounded-3xl font-black text-white shadow-2xl transition-all transform hover:scale-[0.98] ${mode === AnalysisMode.AUDIT ? 'bg-indigo-600 shadow-indigo-200' : 'bg-emerald-600 shadow-emerald-200'} ${(isLoading || !vehicle.vin) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}>
           {isLoading ? <i className="fas fa-brain animate-bounce"></i> : <span className="tracking-widest uppercase">{mode === AnalysisMode.AUDIT ? 'Run Audit Strategy' : 'Calculate Recon Estimate'}</span>}
         </button>
       </div>
