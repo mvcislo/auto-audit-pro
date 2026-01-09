@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { HistoricalAggregates, AnalysisMode, StandardDocument } from '../types';
+import { HistoricalAggregates, AnalysisMode, StandardDocument, InspectionCase } from '../types';
 import { getStandards, getTechnicianProfiles, getBrand } from './storageService';
 
 const getSystemInstruction = (mode: AnalysisMode) => {
@@ -96,6 +96,40 @@ export const analyzeInspection = async (
   } catch (error) {
     console.error(error);
     throw error;
+  }
+};
+
+export const clarifyAnalysis = async (
+  originalCase: InspectionCase,
+  query: string
+): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const { vehicle, data, analysis } = originalCase;
+
+  const prompt = `
+    --- AUDIT CLARIFICATION REQUEST ---
+    VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model}
+    APPRAISER: "${data.appraiserNotes}"
+    TECH: "${data.technicianNotes}"
+    ORIGINAL AUDIT FINDINGS: ${analysis}
+
+    MANAGER QUERY: "${query}"
+
+    Provide a professional, direct clarification. If the manager is asking for a "combat script" or how to push back, provide specific technical counter-arguments based on Ontario Safety or HCUV standards.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        systemInstruction: "You are the Dealer Operations Consultant. Help the manager protect their gross margin. Be concise, firm, and technically accurate."
+      }
+    });
+    return response.text || "Clarification unavailable.";
+  } catch (error) {
+    console.error(error);
+    return "Error generating clarification.";
   }
 };
 

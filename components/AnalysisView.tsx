@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { InspectionCase } from '../types';
+import { clarifyAnalysis } from '../services/geminiService';
 
 interface AnalysisViewProps {
   content: string;
@@ -11,9 +12,30 @@ interface AnalysisViewProps {
 
 const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseData, onReset }) => {
   const [showSource, setShowSource] = useState(true);
+  const [managerQuery, setManagerQuery] = useState('');
+  const [isQuerying, setIsQuerying] = useState(false);
+  const [clarifications, setClarifications] = useState<{question: string, answer: string}[]>([]);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleQuerySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!managerQuery.trim() || !caseData || isQuerying) return;
+
+    setIsQuerying(true);
+    const question = managerQuery;
+    setManagerQuery('');
+
+    try {
+      const answer = await clarifyAnalysis(caseData, question);
+      setClarifications(prev => [...prev, { question, answer }]);
+    } catch (err) {
+      alert("Clarification failed. Please try again.");
+    } finally {
+      setIsQuerying(false);
+    }
   };
 
   const formatContent = (text: string) => {
@@ -164,8 +186,72 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
               {formatContent(content)}
             </div>
 
+            {/* Clarification Chat History */}
+            {clarifications.length > 0 && (
+              <div className="mt-12 space-y-6 no-print border-t border-slate-100 pt-8 animate-in slide-in-from-bottom-2">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <i className="fas fa-comments text-indigo-500"></i> Audit Clarifications
+                </h3>
+                {clarifications.map((item, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <div className="flex justify-end">
+                      <div className="bg-slate-100 p-4 rounded-2xl rounded-tr-none max-w-[80%] border border-slate-200">
+                        <p className="text-xs font-bold text-slate-700 leading-relaxed">{item.question}</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-start">
+                      <div className="bg-indigo-600 text-white p-4 rounded-2xl rounded-tl-none max-w-[80%] shadow-lg shadow-indigo-100">
+                         <div className="flex items-center gap-2 mb-2 text-[10px] font-black uppercase opacity-75">
+                           <i className="fas fa-robot"></i> AI Clarification
+                         </div>
+                        <p className="text-xs font-medium leading-relaxed">{item.answer}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Query Input Box (Web Only) */}
+            <div className="mt-12 no-print">
+              <div className="bg-slate-900 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <i className="fas fa-shield-alt text-8xl"></i>
+                </div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs">
+                      <i className="fas fa-question"></i>
+                    </div>
+                    <h4 className="text-sm font-black text-white uppercase tracking-tight">Manager's Action Center</h4>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-4 leading-relaxed">
+                    Ask for a push-back script, clarification on specific repairs, or technical standards proof.
+                  </p>
+                  <form onSubmit={handleQuerySubmit} className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 'Give me a combat script for the brake job' or 'Why is the detail $250?'" 
+                      className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-500"
+                      value={managerQuery}
+                      onChange={(e) => setManagerQuery(e.target.value)}
+                      disabled={isQuerying}
+                    />
+                    <button 
+                      type="submit" 
+                      disabled={isQuerying || !managerQuery.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:grayscale transition-all text-white px-6 py-3 rounded-xl text-xs font-black uppercase shadow-xl flex items-center gap-2"
+                    >
+                      {isQuerying ? <i className="fas fa-brain animate-bounce"></i> : <i className="fas fa-paper-plane"></i>}
+                      {isQuerying ? 'Analyzing...' : 'Query'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
             {citations.length > 0 && (
-              <div className="mt-8 pt-4 border-t border-slate-100 print:break-inside-avoid">
+              <div className="mt-12 pt-4 border-t border-slate-100 print:break-inside-avoid">
                 <h4 className="font-black text-[9px] text-slate-400 uppercase tracking-widest mb-2">Data Sources & Regulatory Citations</h4>
                 <div className="grid grid-cols-2 gap-2 print:grid-cols-1">
                   {citations.map((cite, idx) => (
