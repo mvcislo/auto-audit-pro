@@ -74,8 +74,11 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
           body { background: white !important; -webkit-print-color-adjust: exact !important; }
           .no-print { display: none !important; }
           .print-full { width: 100% !important; margin: 0 !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
-          .print-header { display: block !important; border-bottom: 2px solid #e2e8f0; margin-bottom: 2rem; padding-bottom: 1rem; }
+          .print-header { display: block !important; border-bottom: 2px solid #0f172a; margin-bottom: 2rem; padding-bottom: 1rem; }
           .print-section { break-inside: avoid; margin-bottom: 1.5rem; }
+          .print-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; width: 100% !important; }
+          .print-img { width: 100% !important; height: auto !important; object-fit: contain !important; border: 1px solid #e2e8f0 !important; border-radius: 4px !important; page-break-inside: avoid !important; }
+          .print-evidence-title { font-size: 14px !important; font-weight: 900 !important; margin-top: 2rem !important; margin-bottom: 1rem !important; text-transform: uppercase !important; border-bottom: 1px solid #0f172a !important; padding-bottom: 4px !important; }
         }
       `}</style>
 
@@ -158,23 +161,28 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
               </div>
 
               {caseData && (
-                <div className="grid grid-cols-3 gap-6 border-y-2 border-slate-900 py-6 my-6 bg-slate-50/50">
-                  <div>
-                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Vehicle Profile</h5>
-                    <p className="text-sm font-black text-slate-900 m-0">{caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}</p>
-                    <p className="text-[10px] font-mono font-bold text-slate-500 m-0">{caseData.vehicle.vin}</p>
-                    <p className="text-[10px] font-bold text-slate-700 m-0 mt-1">{caseData.vehicle.kilometres.toLocaleString()} KM</p>
-                  </div>
-                  <div className="col-span-2">
-                    <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Observation Contrast</h5>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white p-2 border border-slate-200 rounded">
-                         <p className="text-[8px] font-black text-emerald-600 uppercase mb-1">Manager Intake</p>
-                         <p className="text-[9px] italic m-0">"{caseData.data.appraiserNotes}"</p>
+                <div className="grid grid-cols-1 border-y-2 border-slate-900 py-6 my-6 bg-slate-50/50">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-[200px]">
+                      <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Vehicle Profile</h5>
+                      <p className="text-lg font-black text-slate-900 m-0 uppercase">{caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}</p>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-1 mt-2">
+                        <p className="text-[10px] font-bold text-slate-500 m-0 uppercase">VIN: <span className="font-mono text-slate-900">{caseData.vehicle.vin}</span></p>
+                        <p className="text-[10px] font-bold text-slate-500 m-0 uppercase">Odometer: <span className="text-slate-900">{caseData.vehicle.kilometres.toLocaleString()} KM</span></p>
+                        <p className="text-[10px] font-bold text-slate-500 m-0 uppercase">Stock #: <span className="text-slate-900">{caseData.vehicle.stockNumber || 'N/A'}</span></p>
                       </div>
-                      <div className="bg-white p-2 border border-slate-200 rounded">
-                         <p className="text-[8px] font-black text-indigo-600 uppercase mb-1">Service Quote</p>
-                         <p className="text-[9px] italic m-0">"{caseData.data.technicianNotes}"</p>
+                    </div>
+                    <div className="flex-1 min-w-[300px]">
+                      <h5 className="text-[10px] font-black uppercase text-slate-400 mb-2">Observation Contrast</h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-2 border border-slate-200 rounded">
+                           <p className="text-[8px] font-black text-emerald-600 uppercase mb-1">Manager Intake</p>
+                           <p className="text-[9px] italic m-0">"{caseData.data.appraiserNotes}"</p>
+                        </div>
+                        <div className="bg-white p-2 border border-slate-200 rounded">
+                           <p className="text-[8px] font-black text-indigo-600 uppercase mb-1">Service Quote</p>
+                           <p className="text-[9px] italic m-0">"{caseData.data.technicianNotes}"</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -185,6 +193,18 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
             <div className="audit-content print:mt-4">
               {formatContent(content)}
             </div>
+
+            {/* Print Evidence Section */}
+            {caseData && caseData.data.attachments && caseData.data.attachments.length > 0 && (
+              <div className="hidden print:block page-break-before">
+                <h4 className="print-evidence-title">Inspection Evidence & Documentation</h4>
+                <div className="print-grid">
+                  {caseData.data.attachments.map((base64, idx) => (
+                    <img key={idx} src={base64} className="print-img" alt={`Evidence ${idx + 1}`} />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Clarification Chat History */}
             {clarifications.length > 0 && (

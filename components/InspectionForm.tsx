@@ -27,6 +27,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     model: '',
     trim: '',
     kilometres: 0,
+    stockNumber: '',
     acquisitionType: 'Trade'
   });
 
@@ -146,10 +147,14 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
               <i className="fas fa-camera"></i> Scan VIN
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-2 relative">
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">17-Digit VIN Number</label>
               <input required maxLength={17} className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-mono text-base font-bold uppercase focus:border-indigo-500 outline-none ${isExtractingVin ? 'animate-pulse opacity-50' : ''}`} value={vehicle.vin} onChange={handleVINChange} placeholder="Enter VIN..." />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Stock #</label>
+              <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-base outline-none focus:border-indigo-500 uppercase" value={vehicle.stockNumber} onChange={e => setVehicle(v => ({ ...v, stockNumber: e.target.value.toUpperCase() }))} placeholder="Optional" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1">Odometer (km)</label>

@@ -44,6 +44,7 @@ export interface Vehicle {
   model: string;
   trim: string;
   kilometres: number;
+  stockNumber?: string;
   acquisitionType: 'Trade' | 'Street Purchase' | 'Lease Return' | 'Auction';
 }
 
