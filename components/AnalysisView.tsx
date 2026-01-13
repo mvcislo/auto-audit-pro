@@ -13,6 +13,7 @@ interface AnalysisViewProps {
 }
 
 const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseData, onReset, onUpdateCase }) => {
+  const currentYear = new Date().getFullYear();
   const [showSource, setShowSource] = useState(true);
   const [managerQuery, setManagerQuery] = useState('');
   const [isQuerying, setIsQuerying] = useState(false);
@@ -20,6 +21,22 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const checkEligibility = (status: PostReviewStatus): { ok: boolean; reason?: string } => {
+    if (!caseData) return { ok: true };
+    const age = currentYear - caseData.vehicle.year;
+    const kms = caseData.vehicle.kilometres;
+
+    if (status === PostReviewStatus.HCUV) {
+      if (age > 6) return { ok: false, reason: 'Age > 6yr' };
+      if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+    }
+    if (status === PostReviewStatus.HAPO) {
+      if (age > 10) return { ok: false, reason: 'Age > 10yr' };
+      if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
+    }
+    return { ok: true };
   };
 
   const determineMoveType = (from: PostReviewStatus, to: PostReviewStatus): 'Upgrade' | 'Downgrade' | 'Lateral' => {
@@ -38,6 +55,12 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
 
   const handleStatusChange = (newStatus: PostReviewStatus) => {
     if (!caseData || newStatus === caseData.currentStatus) return;
+
+    const eligibility = checkEligibility(newStatus);
+    if (!eligibility.ok) {
+      alert(`Vehicle ineligible for ${newStatus}: ${eligibility.reason}`);
+      return;
+    }
 
     const entry: StatusHistoryEntry = {
       from: caseData.currentStatus,
@@ -138,7 +161,14 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
                     value={caseData.currentStatus}
                     onChange={(e) => handleStatusChange(e.target.value as PostReviewStatus)}
                   >
-                    {Object.values(PostReviewStatus).map(s => <option key={s} value={s} className="text-slate-900">{s}</option>)}
+                    {Object.values(PostReviewStatus).map(s => {
+                      const eligibility = checkEligibility(s);
+                      return (
+                        <option key={s} value={s} disabled={!eligibility.ok} className={eligibility.ok ? 'text-slate-900' : 'text-slate-400 font-normal'}>
+                          {s} {eligibility.ok ? '' : `(${eligibility.reason})`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 

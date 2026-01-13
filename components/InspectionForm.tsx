@@ -11,6 +11,7 @@ interface InspectionFormProps {
 }
 
 const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, initialData }) => {
+  const currentYear = new Date().getFullYear();
   const [mode, setMode] = useState<AnalysisMode>(AnalysisMode.AUDIT);
   const [isScanning, setIsScanning] = useState(false);
   const [isExtractingVin, setIsExtractingVin] = useState(false);
@@ -22,7 +23,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
 
   const [vehicle, setVehicle] = useState<Vehicle>({
     vin: '',
-    year: new Date().getFullYear(),
+    year: currentYear,
     make: '',
     model: '',
     trim: '',
@@ -50,6 +51,34 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     setAppraiserList(getAppraisers());
     setTechnicianList(getTechnicians());
   }, []);
+
+  // Honda Eligibility Logic
+  const checkEligibility = (prog: InventoryProgram) => {
+    const age = currentYear - vehicle.year;
+    const kms = vehicle.kilometres;
+
+    if (prog === InventoryProgram.HCUV) {
+      if (age > 6) return { ok: false, reason: 'Age > 6yrs' };
+      if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+    }
+    if (prog === InventoryProgram.HAPO) {
+      if (age > 10) return { ok: false, reason: 'Age > 10yrs' };
+      if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
+    }
+    return { ok: true };
+  };
+
+  // Automatically adjust selected program if it becomes ineligible
+  useEffect(() => {
+    const hcuv = checkEligibility(InventoryProgram.HCUV);
+    const hapo = checkEligibility(InventoryProgram.HAPO);
+
+    if (data.program === InventoryProgram.HCUV && !hcuv.ok) {
+      setData(d => ({ ...d, program: hapo.ok ? InventoryProgram.HAPO : InventoryProgram.CERTIFIED }));
+    } else if (data.program === InventoryProgram.HAPO && !hapo.ok) {
+      setData(d => ({ ...d, program: InventoryProgram.CERTIFIED }));
+    }
+  }, [vehicle.year, vehicle.kilometres]);
 
   const handleVINChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const vin = e.target.value.toUpperCase();
@@ -165,13 +194,25 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
                 value={data.program}
                 onChange={e => setData(d => ({ ...d, program: e.target.value as InventoryProgram }))}
               >
-                {Object.values(InventoryProgram).map(p => <option key={p} value={p}>{p} Standard</option>)}
+                {Object.values(InventoryProgram).map(p => {
+                  const eligibility = checkEligibility(p);
+                  return (
+                    <option key={p} value={p} disabled={!eligibility.ok} className={!eligibility.ok ? 'text-slate-300' : ''}>
+                      {p} {eligibility.ok ? 'Standard' : `(${eligibility.reason})`}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div className="grid grid-cols-3 gap-4 md:col-span-3">
               <div className="p-4 bg-slate-100/50 rounded-2xl border border-slate-100 text-center">
                 <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Year</p>
-                <p className="text-sm font-black text-slate-900">{vehicle.year || '----'}</p>
+                <input 
+                   type="number" 
+                   className="w-full bg-transparent text-center text-sm font-black text-slate-900 border-none outline-none"
+                   value={vehicle.year}
+                   onChange={e => setVehicle(v => ({ ...v, year: parseInt(e.target.value) || currentYear }))}
+                />
               </div>
               <div className="p-4 bg-slate-100/50 rounded-2xl border border-slate-100 text-center">
                 <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Make</p>
