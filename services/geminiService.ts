@@ -1,5 +1,6 @@
 
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
+// Always use import {GoogleGenAI} from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type, Blob } from "@google/genai";
 import { HistoricalAggregates, AnalysisMode, StandardDocument, InspectionCase } from '../types';
 import { getStandards, getTechnicianProfiles, getBrand } from './storageService';
 
@@ -36,6 +37,10 @@ STRATEGIC AUDIT RULES:
 4. Place [DETECTED_TOTAL: 1234.56] at the very end.`;
 };
 
+/**
+ * Generates a recon audit or appraisal analysis using Gemini.
+ * Uses gemini-3-pro-preview for complex reasoning tasks.
+ */
 export const analyzeInspection = async (
   currentCase: any, 
   history: HistoricalAggregates | null,
@@ -50,8 +55,9 @@ export const analyzeInspection = async (
     // Attachments
     data.attachments.forEach((base64: string) => {
       if (base64.includes(',')) {
+        // Fix: Explicitly type as GenAI Blob to resolve global Blob conflict
         parts.push({
-          inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] }
+          inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } as Blob
         });
       }
     });
@@ -88,11 +94,16 @@ export const analyzeInspection = async (
       }
     });
 
+    // Extract generated text directly from response.text property
     const fullText = response.text || "Analysis failed.";
     const totalMatch = fullText.match(/\[DETECTED_TOTAL:\s*([\d,.]+)\]/);
     const detectedTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : undefined;
 
-    return { text: fullText, detectedTotal, citations: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] };
+    return { 
+      text: fullText, 
+      detectedTotal, 
+      citations: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] 
+    };
   } catch (error) {
     console.error(error);
     throw error;
@@ -133,6 +144,9 @@ export const clarifyAnalysis = async (
   }
 };
 
+/**
+ * Extracts VIN and vehicle details from an image.
+ */
 export const extractVINFromImage = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
@@ -140,7 +154,8 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
+          // Fix: Explicitly type as GenAI Blob to resolve ambiguity with window.Blob
+          { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } as Blob },
           { text: "Extract the 17-digit VIN from this image. Also identify Year, Make, and Model if visible. Return as a JSON object with keys: vin, year, make, model." }
         ]
       }
@@ -166,6 +181,9 @@ export const decodeVIN = async (vin: string): Promise<any> => {
   } catch (e) { return null; }
 };
 
+/**
+ * Extracts rules from a technical standard document (PDF).
+ */
 export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
@@ -173,7 +191,8 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
-          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
+          // Fix: Explicitly type as GenAI Blob for PDF data
+          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } as Blob },
           { text: "Extract technical pass/fail criteria from this inspection standard document." }
         ]
       }

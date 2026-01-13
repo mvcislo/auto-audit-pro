@@ -5,6 +5,20 @@ export enum InspectionType {
   BOTH = 'Both'
 }
 
+export enum InventoryProgram {
+  HCUV = 'HCUV',
+  HAPO = 'HAPO',
+  CERTIFIED = 'Certified'
+}
+
+export enum PostReviewStatus {
+  HCUV = 'HCUV',
+  HAPO = 'HAPO',
+  CERTIFIED = 'Certified',
+  WHOLESALE = 'Wholesale',
+  AS_IS_RETAIL = 'As-Is Retail'
+}
+
 export type DealershipBrand = 'Honda' | 'Toyota' | 'Chevrolet' | 'Ford' | 'Hyundai' | 'Nissan' | 'Other';
 
 export enum OutcomeStatus {
@@ -50,6 +64,7 @@ export interface Vehicle {
 
 export interface InspectionData {
   type: InspectionType;
+  program: InventoryProgram;
   safetyOutcome: OutcomeStatus;
   hcuvOutcome: OutcomeStatus;
   technicianNotes: string;
@@ -61,6 +76,13 @@ export interface InspectionData {
   attachments: string[]; // Base64 images
 }
 
+export interface StatusHistoryEntry {
+  from: PostReviewStatus;
+  to: PostReviewStatus;
+  timestamp: number;
+  type: 'Upgrade' | 'Downgrade' | 'Lateral';
+}
+
 export interface InspectionCase {
   id: string;
   timestamp: number;
@@ -69,6 +91,8 @@ export interface InspectionCase {
   data: InspectionData;
   analysis?: string;
   detectedTotal?: number;
+  currentStatus: PostReviewStatus;
+  statusHistory: StatusHistoryEntry[];
 }
 
 export interface PerformanceStats {
@@ -88,10 +112,6 @@ export interface HistoricalAggregates {
   totalCases: number;
 }
 
-/**
- * Global declaration to match the pre-configured environment.
- * The optional modifier and global scope interface resolve declaration merging conflicts.
- */
 declare global {
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
