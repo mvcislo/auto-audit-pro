@@ -1,6 +1,6 @@
 
 // Always use import {GoogleGenAI} from "@google/genai";
-import { GoogleGenAI, GenerateContentResponse, Type, Blob as GenAIBlob } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { HistoricalAggregates, AnalysisMode, StandardDocument, InspectionCase } from '../types';
 import { getStandards, getTechnicianProfiles, getBrand } from './storageService';
 
@@ -52,12 +52,11 @@ export const analyzeInspection = async (
     
     const parts: any[] = [];
     
-    // Attachments
+    // Attachments - use object structure for inlineData to avoid Blob naming collision
     data.attachments.forEach((base64: string) => {
       if (base64.includes(',')) {
-        // Fix: Use aliased GenAIBlob to resolve ambiguity with global window.Blob
         parts.push({
-          inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } as GenAIBlob
+          inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] }
         });
       }
     });
@@ -154,8 +153,8 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
-          // Fix: Use aliased GenAIBlob to resolve ambiguity with global window.Blob
-          { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } as GenAIBlob },
+          // Use object structure for inlineData to avoid Blob naming collision
+          { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
           { text: "Extract the 17-digit VIN from this image. Also identify Year, Make, and Model if visible. Return as a JSON object with keys: vin, year, make, model." }
         ]
       }
@@ -191,8 +190,8 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
-          // Fix: Use aliased GenAIBlob for technical documents like PDF to resolve type conflict
-          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } as GenAIBlob },
+          // Use object structure for inlineData to avoid Blob naming collision
+          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
           { text: "Extract technical pass/fail criteria from this inspection standard document." }
         ]
       }

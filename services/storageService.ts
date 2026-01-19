@@ -49,9 +49,22 @@ export const deleteTechnician = (id: string) => {
   localStorage.setItem(TECHNICIANS_KEY, JSON.stringify(filtered));
 };
 
+/**
+ * Persists a case to the local database.
+ * If the case ID already exists, it updates the existing entry.
+ */
 export const saveCase = (newCase: InspectionCase) => {
   const cases = getAllCases();
-  cases.unshift(newCase);
+  const existingIndex = cases.findIndex(c => c.id === newCase.id);
+  
+  if (existingIndex > -1) {
+    // Update existing record
+    cases[existingIndex] = newCase;
+  } else {
+    // Insert new record at the top
+    cases.unshift(newCase);
+  }
+  
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
 };
 

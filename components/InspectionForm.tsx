@@ -131,7 +131,8 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      Array.from(e.target.files).forEach(file => {
+      // Cast 'file' to 'File' to ensure it's recognized as a global Blob for FileReader.readAsDataURL
+      Array.from(e.target.files).forEach((file: File) => {
         const reader = new FileReader();
         reader.onload = () => setData(prev => ({ ...prev, attachments: [...prev.attachments, reader.result as string] }));
         reader.readAsDataURL(file);
