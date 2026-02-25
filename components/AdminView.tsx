@@ -173,7 +173,8 @@ const AdminView: React.FC = () => {
     switch (currentBrand) {
       case 'Honda': return 'HCUV Manual (Honda)';
       case 'Toyota': return 'TCUV Manual (Toyota)';
-      case 'Chevrolet': return 'GM Certified Manual';
+      case 'CBG': return 'GM Certified Manual (CBG)';
+      case 'Cadillac': return 'Cadillac Certified Manual';
       case 'Ford': return 'Blue/Gold Advantage Manual';
       default: return `${currentBrand} CPO Manual`;
     }
@@ -186,7 +187,7 @@ const AdminView: React.FC = () => {
     { key: 'DEALERSHIP', label: 'Dealer Recon Policy', icon: 'fa-building', color: 'blue' }
   ];
 
-  const brands: DealershipBrand[] = ['Honda', 'Toyota', 'Chevrolet', 'Ford', 'Hyundai', 'Nissan', 'Other'];
+  const brands: DealershipBrand[] = ['Honda', 'Toyota', 'CBG', 'Cadillac', 'Ford', 'Hyundai', 'Nissan', 'Other'];
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 pb-20">

@@ -19,7 +19,7 @@ export enum PostReviewStatus {
   AS_IS_RETAIL = 'As-Is Retail'
 }
 
-export type DealershipBrand = 'Honda' | 'Toyota' | 'Chevrolet' | 'Ford' | 'Hyundai' | 'Nissan' | 'Other';
+export type DealershipBrand = 'Honda' | 'Toyota' | 'CBG' | 'Cadillac' | 'Ford' | 'Hyundai' | 'Nissan' | 'Other';
 
 export enum OutcomeStatus {
   PASS = 'Pass',
