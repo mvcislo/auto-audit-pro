@@ -9,10 +9,11 @@ interface AnalysisViewProps {
   citations: any[];
   caseData?: InspectionCase;
   onReset: () => void;
+  onNew: () => void;
   onUpdateCase?: (updated: InspectionCase) => void;
 }
 
-const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseData, onReset, onUpdateCase }) => {
+const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseData, onReset, onNew, onUpdateCase }) => {
   const currentYear = new Date().getFullYear();
   const [showSource, setShowSource] = useState(true);
   const [managerQuery, setManagerQuery] = useState('');
@@ -142,7 +143,10 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
             <i className="fas fa-file-pdf"></i> Print / Save PDF
           </button>
           <button onClick={onReset} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold">
-            <i className="fas fa-arrow-left mr-2"></i> New
+            <i className="fas fa-edit mr-2"></i> Edit Input
+          </button>
+          <button onClick={onNew} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold">
+            <i className="fas fa-plus mr-2"></i> New
           </button>
         </div>
       </div>

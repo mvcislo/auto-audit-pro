@@ -8,9 +8,12 @@ interface InspectionFormProps {
   onAnalyze: (vehicle: Vehicle, data: InspectionData, mode: AnalysisMode) => void;
   isLoading: boolean;
   initialData?: Partial<InspectionData>;
+  initialVehicle?: Partial<Vehicle>;
+  onShowAnalysis?: () => void;
+  hasAnalysis?: boolean;
 }
 
-const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, initialData }) => {
+const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, initialData, initialVehicle, onShowAnalysis, hasAnalysis }) => {
   const currentYear = new Date().getFullYear();
   const [mode, setMode] = useState<AnalysisMode>(AnalysisMode.AUDIT);
   const [isScanning, setIsScanning] = useState(false);
@@ -29,7 +32,8 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     trim: '',
     kilometres: 0,
     stockNumber: '',
-    acquisitionType: 'Trade'
+    acquisitionType: 'Trade',
+    ...initialVehicle
   });
 
   const [data, setData] = useState<InspectionData>({
@@ -421,6 +425,11 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
           )}
         </section>
 
+        {hasAnalysis && onShowAnalysis && (
+          <button type="button" onClick={onShowAnalysis} className="w-full py-4 mb-4 border-2 border-indigo-600 text-indigo-600 rounded-3xl font-black uppercase tracking-widest hover:bg-indigo-50 transition-all">
+            <i className="fas fa-eye mr-2"></i> View Generated Analysis
+          </button>
+        )}
         <button disabled={isLoading || !vehicle.vin} className={`w-full py-6 rounded-3xl font-black text-white shadow-2xl transition-all transform hover:scale-[0.98] ${mode === AnalysisMode.AUDIT ? 'bg-indigo-600' : 'bg-emerald-600'} ${(isLoading || !vehicle.vin) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}>
           {isLoading ? <i className="fas fa-brain animate-bounce"></i> : <span className="tracking-widest uppercase">{mode === AnalysisMode.AUDIT ? 'Run Audit Strategy' : 'Calculate Recon Estimate'}</span>}
         </button>
