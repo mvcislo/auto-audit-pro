@@ -4,6 +4,11 @@ import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { HistoricalAggregates, AnalysisMode, StandardDocument, InspectionCase, DealershipBrand } from '../types';
 import { getStandards, getTechnicianProfiles, getBrand } from './storageService';
 
+const getMimeType = (base64: string): string => {
+  const match = base64.match(/^data:([^;]+);base64,/);
+  return match ? match[1] : 'image/jpeg';
+};
+
 const getSystemInstruction = (mode: AnalysisMode, brand: DealershipBrand) => {
   if (mode === AnalysisMode.APPRAISAL) {
     return `You are the Lead Appraiser and Recon Specialist for a high-volume ${brand} dealership.
@@ -51,11 +56,12 @@ export const analyzeInspection = async (
 
     const parts: any[] = [];
 
-    // Attachments - use object structure for inlineData to avoid Blob naming collision
+    // Attachments
     data.attachments.forEach((base64: string) => {
       if (base64.includes(',')) {
+        const mimeType = getMimeType(base64);
         parts.push({
-          inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] }
+          inlineData: { mimeType, data: base64.split(',')[1] }
         });
       }
     });
@@ -153,7 +159,7 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
       contents: {
         parts: [
           // Use object structure for inlineData to avoid Blob naming collision
-          { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
+          { inlineData: { mimeType: getMimeType(base64), data: base64.split(',')[1] } },
           { text: "Extract the 17-digit VIN from this image. Also identify Year, Make, and Model if visible. Return as a JSON object with keys: vin, year, make, model." }
         ]
       }
