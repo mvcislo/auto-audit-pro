@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Vehicle, InspectionData, InspectionType, OutcomeStatus, AnalysisMode, Appraiser, Technician, InventoryProgram } from '../types';
-import { decodeVIN, extractVINFromImage } from '../services/geminiService';
+import { decodeVIN, extractVINFromImage, parseVAutoAppraisal } from '../services/geminiService';
 import { getAppraisers, getTechnicians } from '../services/storageService';
 
 interface InspectionFormProps {
@@ -140,6 +140,43 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     }
   };
 
+  const handleVAutoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsExtractingVin(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      try {
+        const result = await parseVAutoAppraisal(base64);
+        if (result) {
+          setVehicle(v => ({
+            ...v,
+            vin: result.vin || v.vin,
+            year: result.year || v.year,
+            make: result.make || v.make,
+            model: result.model || v.model,
+            kilometres: result.kilometres || v.kilometres
+          }));
+
+          setData(d => ({
+            ...d,
+            appraiserName: result.appraiserName || d.appraiserName,
+            appraiserNotes: result.appraiserNotes || d.appraiserNotes,
+            // If it's a vAuto appraisal, we might want to capture the PDF as an attachment too
+            attachments: [...d.attachments, base64]
+          }));
+        }
+      } catch (err) {
+        console.error("vAuto upload error:", err);
+      } finally {
+        setIsExtractingVin(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       // Cast 'file' to 'File' to ensure it's recognized as a global Blob for FileReader.readAsDataURL
@@ -179,9 +216,15 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-black text-slate-800 uppercase">1. Vehicle Identity</h3>
-            <button type="button" onClick={startScanner} className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 uppercase">
-              <i className="fas fa-camera"></i> Scan VIN
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => document.getElementById('vauto-upload')?.click()} className="text-[10px] font-black bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 uppercase">
+                <i className="fas fa-file-pdf"></i> Import vAuto
+              </button>
+              <input type="file" id="vauto-upload" className="hidden" accept=".pdf" onChange={handleVAutoUpload} />
+              <button type="button" onClick={startScanner} className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 uppercase">
+                <i className="fas fa-camera"></i> Scan VIN
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-2 relative">

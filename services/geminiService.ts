@@ -198,3 +198,29 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
     return response.text || "Failed to digest document.";
   } catch (e) { return "Extraction error."; }
 };
+
+/**
+ * Extracts vehicle details and appraiser notes from a vAuto Appraisal PDF.
+ */
+export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
+          { text: "Extract vehicle info (VIN, Year, Make, Model, Kilometres) and Appraiser/Manager notes from this vAuto trade appraisal. Also try to find the Appraiser's name. Return as JSON: { vin, year, make, model, kilometres, appraiserName, appraiserNotes }." }
+        ]
+      }
+    });
+    const text = response.text || '{}';
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}') + 1;
+    if (jsonStart !== -1 && jsonEnd !== -1) return JSON.parse(text.substring(jsonStart, jsonEnd));
+    return null;
+  } catch (e) {
+    console.error("vAuto Parse Error:", e);
+    return null;
+  }
+};
