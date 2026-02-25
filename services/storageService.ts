@@ -5,7 +5,21 @@ import { InspectionCase, PerformanceStats, HistoricalAggregates, StandardDocumen
 const STORAGE_KEY = 'auto_audit_cases';
 const BRAND_KEY = 'dealership_brand';
 
+// Helper for localStorage fallback
+const getLocal = (key: string) => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : [];
+};
+
+const setLocal = (key: string, val: any) => {
+  localStorage.setItem(key, JSON.stringify(val));
+};
+
 export const saveBrand = async (brand: DealershipBrand) => {
+  if (!supabase) {
+    localStorage.setItem(BRAND_KEY, brand);
+    return;
+  }
   const { error } = await supabase
     .from('settings')
     .upsert({ key: BRAND_KEY, value: brand });
@@ -13,6 +27,9 @@ export const saveBrand = async (brand: DealershipBrand) => {
 };
 
 export const getBrand = async (): Promise<DealershipBrand> => {
+  if (!supabase) {
+    return (localStorage.getItem(BRAND_KEY) as DealershipBrand) || 'Honda';
+  }
   const { data, error } = await supabase
     .from('settings')
     .select('value')
@@ -24,6 +41,7 @@ export const getBrand = async (): Promise<DealershipBrand> => {
 };
 
 export const getAppraisers = async (): Promise<Appraiser[]> => {
+  if (!supabase) return getLocal('appraisers');
   const { data, error } = await supabase
     .from('appraisers')
     .select('*')
@@ -37,6 +55,12 @@ export const getAppraisers = async (): Promise<Appraiser[]> => {
 };
 
 export const saveAppraiser = async (appraiser: Appraiser) => {
+  if (!supabase) {
+    const list = getLocal('appraisers');
+    list.push(appraiser);
+    setLocal('appraisers', list);
+    return;
+  }
   const { error } = await supabase
     .from('appraisers')
     .insert({ id: appraiser.id, name: appraiser.name });
@@ -44,6 +68,11 @@ export const saveAppraiser = async (appraiser: Appraiser) => {
 };
 
 export const deleteAppraiser = async (id: string) => {
+  if (!supabase) {
+    const list = getLocal('appraisers').filter((a: any) => a.id !== id);
+    setLocal('appraisers', list);
+    return;
+  }
   const { error } = await supabase
     .from('appraisers')
     .delete()
@@ -52,6 +81,7 @@ export const deleteAppraiser = async (id: string) => {
 };
 
 export const getTechnicians = async (): Promise<Technician[]> => {
+  if (!supabase) return getLocal('technicians');
   const { data, error } = await supabase
     .from('technicians')
     .select('*')
@@ -65,6 +95,12 @@ export const getTechnicians = async (): Promise<Technician[]> => {
 };
 
 export const saveTechnician = async (tech: Technician) => {
+  if (!supabase) {
+    const list = getLocal('technicians');
+    list.push(tech);
+    setLocal('technicians', list);
+    return;
+  }
   const { error } = await supabase
     .from('technicians')
     .insert({ id: tech.id, name: tech.name, tech_number: tech.techNumber });
@@ -72,6 +108,11 @@ export const saveTechnician = async (tech: Technician) => {
 };
 
 export const deleteTechnician = async (id: string) => {
+  if (!supabase) {
+    const list = getLocal('technicians').filter((t: any) => t.id !== id);
+    setLocal('technicians', list);
+    return;
+  }
   const { error } = await supabase
     .from('technicians')
     .delete()
@@ -83,6 +124,14 @@ export const deleteTechnician = async (id: string) => {
  * Persists a case to the database.
  */
 export const saveCase = async (newCase: InspectionCase) => {
+  if (!supabase) {
+    const cases = getLocal(STORAGE_KEY);
+    const existingIndex = cases.findIndex((c: any) => c.id === newCase.id);
+    if (existingIndex > -1) cases[existingIndex] = newCase;
+    else cases.unshift(newCase);
+    setLocal(STORAGE_KEY, cases);
+    return;
+  }
   const { error } = await supabase
     .from('inspection_cases')
     .upsert({
@@ -101,6 +150,7 @@ export const saveCase = async (newCase: InspectionCase) => {
 };
 
 export const getAllCases = async (): Promise<InspectionCase[]> => {
+  if (!supabase) return getLocal(STORAGE_KEY);
   const { data, error } = await supabase
     .from('inspection_cases')
     .select('*')
@@ -125,6 +175,14 @@ export const getAllCases = async (): Promise<InspectionCase[]> => {
 };
 
 export const saveStandard = async (doc: StandardDocument) => {
+  if (!supabase) {
+    const standards = getLocal('standards');
+    const index = standards.findIndex((s: any) => s.type === doc.type);
+    if (index > -1) standards[index] = doc;
+    else standards.push(doc);
+    setLocal('standards', standards);
+    return;
+  }
   const { error } = await supabase
     .from('standards')
     .upsert({
@@ -138,6 +196,7 @@ export const saveStandard = async (doc: StandardDocument) => {
 };
 
 export const getStandards = async (): Promise<StandardDocument[]> => {
+  if (!supabase) return getLocal('standards');
   const { data, error } = await supabase
     .from('standards')
     .select('*');
@@ -165,11 +224,20 @@ export const getDatabaseHealth = async () => {
   const appraisers = (await getAppraisers()).length;
   const techs = (await getTechnicians()).length;
 
+  let kbUsed = 0;
+  if (!supabase) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) kbUsed += (localStorage.getItem(key)?.length || 0);
+    }
+  }
+
   return {
     isHealthy: true,
     totalRecords: cases + standards + appraisers + techs,
-    kbUsed: 0, // Not easily measured for Supabase from client
-    lastCommit: Date.now()
+    kbUsed: Math.round(kbUsed / 1024),
+    lastCommit: Date.now(),
+    isLocal: !supabase
   };
 };
 
@@ -222,4 +290,3 @@ export const getHistoricalContext = async (make: string, model: string, year: nu
     totalCases: filtered.length
   };
 };
-

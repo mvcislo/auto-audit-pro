@@ -8,4 +8,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials missing. Database functionality will be limited.');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
+
