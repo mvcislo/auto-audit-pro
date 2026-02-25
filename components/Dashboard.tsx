@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { getAllCases, getTechnicianProfiles } from '../services/storageService';
+import { getAllCases } from '../services/storageService';
 import { InspectionCase } from '../types';
 
 interface DashboardProps {
@@ -10,19 +10,17 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [timeRange, setTimeRange] = useState<'all' | 'month' | 'ytd' | 'custom'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [cases, setCases] = useState<InspectionCase[]>([]);
-  const [techProfiles, setTechProfiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [casesData, profilesData] = await Promise.all([
-          getAllCases(),
-          getTechnicianProfiles()
-        ]);
+        const casesData = await getAllCases();
         setCases(casesData);
-        setTechProfiles(profilesData);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -32,12 +30,59 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
     fetchData();
   }, []);
 
-  const filteredCases = cases.filter(c =>
+  const timeFilteredCases = cases.filter(c => {
+    const caseDate = new Date(c.timestamp);
+    const now = new Date();
+
+    if (timeRange === 'month') {
+      return caseDate.getMonth() === now.getMonth() && caseDate.getFullYear() === now.getFullYear();
+    }
+    if (timeRange === 'ytd') {
+      return caseDate.getFullYear() === now.getFullYear();
+    }
+    if (timeRange === 'custom' && startDate && endDate) {
+      const s = new Date(startDate);
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      return caseDate >= s && caseDate <= e;
+    }
+    return true; // 'all'
+  });
+
+  const filteredCases = timeFilteredCases.filter(c =>
     c.vehicle.vin.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.data.technicianName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.vehicle.stockNumber?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const techProfiles = React.useMemo(() => {
+    const techMap = new Map<string, { total: number; variance: number; count: number }>();
+    timeFilteredCases.forEach(c => {
+      if (!c.data.technicianName) return;
+      const stats = techMap.get(c.data.technicianName) || { total: 0, variance: 0, count: 0 };
+      const variance = (c.data.serviceDepartmentEstimate || 0) - (c.data.managerAppraisalEstimate || 0);
+      stats.variance += variance;
+      stats.count += 1;
+      techMap.set(c.data.technicianName, stats);
+    });
+
+    return Array.from(techMap.entries()).map(([name, stats]) => {
+      const avgVariance = stats.variance / stats.count;
+      let tag: 'Aggressive' | 'Accurate' | 'Passive' = 'Accurate';
+      if (avgVariance > 1500) tag = 'Aggressive';
+      else if (avgVariance < -500) tag = 'Passive';
+
+      return {
+        technicianName: name,
+        appraiserName: '',
+        totalCases: stats.count,
+        avgVariance,
+        accuracyRating: Math.max(0, 100 - (Math.abs(avgVariance) / 100)),
+        reliabilityTag: tag
+      };
+    });
+  }, [timeFilteredCases]);
 
   // Aggregate data for chart
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -47,7 +92,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
   }).reverse();
 
   const chartData = last7Days.map(date => {
-    const dayCases = cases.filter(c => new Date(c.timestamp).toLocaleDateString('en-CA') === date);
+    const dayCases = timeFilteredCases.filter(c => new Date(c.timestamp).toLocaleDateString('en-CA') === date);
     return {
       date: date.split('-').slice(1).join('/'),
       cases: dayCases.length,
@@ -55,8 +100,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
     };
   });
 
-  const totalVariance = cases.reduce((acc, curr) => acc + ((curr.data.serviceDepartmentEstimate || 0) - (curr.data.managerAppraisalEstimate || 0)), 0);
-  const avgVariance = cases.length ? totalVariance / cases.length : 0;
+  const totalVariance = timeFilteredCases.reduce((acc, curr) => acc + ((curr.data.serviceDepartmentEstimate || 0) - (curr.data.managerAppraisalEstimate || 0)), 0);
+  const avgVariance = timeFilteredCases.length ? totalVariance / timeFilteredCases.length : 0;
 
   if (isLoading) {
     return (
@@ -68,11 +113,61 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Search and Time Filter Bar */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between no-print">
+        <div className="relative w-full md:w-96">
+          <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input
+            type="text"
+            placeholder="Search by VIN, Stock, Model, or Tech..."
+            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto w-full md:w-auto">
+          {(['all', 'month', 'ytd', 'custom'] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setTimeRange(r)}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${timeRange === r ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'
+                }`}
+            >
+              {r === 'all' ? 'All Time' : r === 'month' ? 'This Month' : r === 'ytd' ? 'YTD' : 'Custom'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {timeRange === 'custom' && (
+        <div className="flex gap-4 p-6 bg-white rounded-2xl border border-indigo-100 shadow-sm animate-in slide-in-from-top-2 no-print">
+          <div className="flex-1">
+            <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Start Date</label>
+            <input
+              type="date"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">End Date</label>
+            <input
+              type="date"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Top Level Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-indigo-500">
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Total Audits</p>
-          <h3 className="text-3xl font-black mt-1 text-slate-900">{cases.length}</h3>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Audits</p>
+          <h3 className="text-3xl font-black mt-1 text-slate-900">{timeFilteredCases.length}</h3>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Avg. Recon Variance</p>
@@ -87,7 +182,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Program Rate</p>
           <h3 className="text-3xl font-black mt-1 text-emerald-600">
-            {Math.round((cases.filter(c => ['HCUV', 'HAPO', 'Certified'].includes(c.currentStatus)).length / (cases.length || 1)) * 100)}%
+            {Math.round((timeFilteredCases.filter(c => ['HCUV', 'HAPO', 'Certified'].includes(c.currentStatus)).length / (timeFilteredCases.length || 1)) * 100)}%
           </h3>
         </div>
       </div>
@@ -117,16 +212,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
               <h4 className="font-black text-slate-800 uppercase tracking-tight">Inventory Lifecycle Log</h4>
-              <div className="relative">
-                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                <input
-                  type="text"
-                  placeholder="Search VIN/Stock/Model..."
-                  className="pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none w-64"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
