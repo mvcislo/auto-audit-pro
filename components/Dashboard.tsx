@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { getAllCases } from '../services/storageService';
+import { getAllCases, deleteCase } from '../services/storageService';
 import { InspectionCase } from '../types';
 
 interface DashboardProps {
@@ -15,6 +15,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
   const [endDate, setEndDate] = useState('');
   const [cases, setCases] = useState<InspectionCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this audit? This cannot be undone.")) {
+      const success = await deleteCase(id);
+      if (success) {
+        setCases(prev => prev.filter(c => c.id !== id));
+      } else {
+        alert("Error deleting case. Please try again.");
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -256,12 +268,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => onSelectCase(c)}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[10px] uppercase transition-all"
-                        >
-                          Audit File
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => onSelectCase(c)}
+                            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-bold text-[10px] uppercase transition-all"
+                          >
+                            Audit File
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(e, c.id)}
+                            className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"
+                            title="Delete Audit"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -174,6 +174,25 @@ export const getAllCases = async (): Promise<InspectionCase[]> => {
   }));
 };
 
+export const deleteCase = async (id: string): Promise<boolean> => {
+  if (!supabase) {
+    const cases = getLocal(STORAGE_KEY);
+    const filtered = cases.filter((c: any) => c.id !== id);
+    setLocal(STORAGE_KEY, filtered);
+    return true;
+  }
+  const { error } = await supabase
+    .from('inspection_cases')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting case:', error);
+    return false;
+  }
+  return true;
+};
+
 export const saveStandard = async (doc: StandardDocument) => {
   if (!supabase) {
     const standards = getLocal('standards');

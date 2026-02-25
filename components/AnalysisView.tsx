@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { InspectionCase, PostReviewStatus, StatusHistoryEntry } from '../types';
 import { clarifyAnalysis } from '../services/geminiService';
-import { saveCase } from '../services/storageService';
+import { saveCase, deleteCase } from '../services/storageService';
 
 interface AnalysisViewProps {
   content: string;
@@ -18,6 +18,18 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
   const [showSource, setShowSource] = useState(true);
   const [managerQuery, setManagerQuery] = useState('');
   const [isQuerying, setIsQuerying] = useState(false);
+
+  const handleLocalDelete = async () => {
+    if (!caseData) return;
+    if (window.confirm("Are you sure you want to delete this specific audit? This action cannot be reversed.")) {
+      const success = await deleteCase(caseData.id);
+      if (success) {
+        onNew(); // Go back to dashboard/new audit
+      } else {
+        alert("Error deleting case.");
+      }
+    }
+  };
   const [clarifications, setClarifications] = useState<{ question: string, answer: string }[]>([]);
 
   const handlePrint = () => {
@@ -147,6 +159,9 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
           </button>
           <button onClick={onNew} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold">
             <i className="fas fa-plus mr-2"></i> New
+          </button>
+          <button onClick={handleLocalDelete} className="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors" title="Delete Audit">
+            <i className="fas fa-trash"></i>
           </button>
         </div>
       </div>
