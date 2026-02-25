@@ -206,18 +206,22 @@ export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
-          { text: "Extract vehicle info (VIN, Year, Make, Model, Kilometres) and Appraiser/Manager notes from this vAuto trade appraisal. Also try to find the Appraiser's name. Return as JSON: { vin, year, make, model, kilometres, appraiserName, appraiserNotes }." }
+          { text: "Extract vehicle info from this vAuto trade appraisal. Return a JSON object with EXACTLY these keys and types: { \"vin\": string, \"year\": number, \"make\": string, \"model\": string, \"kilometres\": number, \"appraiserName\": string, \"appraiserNotes\": string }. If a numeric value has commas or text, return only the digits as a number. Return ONLY the raw JSON." }
         ]
       }
     });
     const text = response.text || '{}';
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}') + 1;
-    if (jsonStart !== -1 && jsonEnd !== -1) return JSON.parse(text.substring(jsonStart, jsonEnd));
+    // Improved JSON extraction search for outermost braces
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonStr = text.substring(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonStr);
+    }
     return null;
   } catch (e) {
     console.error("vAuto Parse Error:", e);

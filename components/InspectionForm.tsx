@@ -144,35 +144,57 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log("vAuto File selected:", file.name);
     setIsExtractingVin(true);
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
+      console.log("File read successfully, sending to AI...");
       try {
         const result = await parseVAutoAppraisal(base64);
-        if (result) {
-          setVehicle(v => ({
-            ...v,
-            vin: result.vin || v.vin,
-            year: result.year || v.year,
-            make: result.make || v.make,
-            model: result.model || v.model,
-            kilometres: result.kilometres || v.kilometres
-          }));
+        console.log("AI result from vAuto PDF:", result);
 
-          setData(d => ({
-            ...d,
-            appraiserName: result.appraiserName || d.appraiserName,
-            appraiserNotes: result.appraiserNotes || d.appraiserNotes,
-            // If it's a vAuto appraisal, we might want to capture the PDF as an attachment too
-            attachments: [...d.attachments, base64]
-          }));
+        if (result) {
+          setVehicle(v => {
+            const next = {
+              ...v,
+              vin: result.vin || v.vin,
+              year: parseInt(result.year) || v.year,
+              make: result.make || v.make,
+              model: result.model || v.model,
+              kilometres: typeof result.kilometres === 'string' ? parseInt(result.kilometres.replace(/\D/g, '')) : (result.kilometres || v.kilometres)
+            };
+            console.log("Updating vehicle state to:", next);
+            return next;
+          });
+
+          setData(d => {
+            const next = {
+              ...d,
+              appraiserName: result.appraiserName || d.appraiserName,
+              appraiserNotes: result.appraiserNotes || d.appraiserNotes,
+              attachments: [...d.attachments, base64]
+            };
+            console.log("Updating inspection data state to:", next);
+            return next;
+          });
+
+          alert("vAuto Appraisal imported successfully!");
+        } else {
+          alert("AI could not extract data from this PDF. Please ensure it is a vAuto trade appraisal.");
         }
       } catch (err) {
         console.error("vAuto upload error:", err);
+        alert("Error parsing PDF. See console for details.");
       } finally {
         setIsExtractingVin(false);
+        // Clear input
+        e.target.value = '';
       }
+    };
+    reader.onerror = (err) => {
+      console.error("FileReader error:", err);
+      setIsExtractingVin(false);
     };
     reader.readAsDataURL(file);
   };
