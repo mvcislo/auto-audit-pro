@@ -12,7 +12,14 @@ const getLocal = (key: string) => {
 };
 
 const setLocal = (key: string, val: any) => {
-  localStorage.setItem(key, JSON.stringify(val));
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      alert("CRITICAL STORAGE ERROR: Browser memory is full. You have too many saved audits or large manuals. Please delete old audits or connect to Supabase for unlimited storage.");
+    }
+    console.error("Storage Error:", e);
+  }
 };
 
 export const saveBrand = async (brand: DealershipBrand) => {

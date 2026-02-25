@@ -66,6 +66,10 @@ export const analyzeInspection = async (
       }
     });
 
+    // Inject Ground Truth Standards (Manuals)
+    const standards = await getStandards();
+    const relevantStandards = standards.map(s => `[${s.type} RULES]: ${s.extractedRules}`).join('\n\n');
+
     let promptText = '';
 
     if (mode === AnalysisMode.APPRAISAL) {
@@ -74,6 +78,9 @@ export const analyzeInspection = async (
         VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.kilometres} km)
         APPRAISER NOTES: "${data.appraiserNotes || 'No notes provided'}"
         
+        GROUND TRUTH RULES:
+        ${relevantStandards}
+
         GOAL: Calculate total estimated recon starting with the $670 Mandatory Base.
       `;
     } else {
@@ -83,7 +90,10 @@ export const analyzeInspection = async (
         TECH NOTES: "${data.technicianNotes}"
         MGR BUDGET: $${data.managerAppraisalEstimate} | TECH QUOTE: $${data.serviceDepartmentEstimate}
         
-        Compare these notes and flag discrepancies.
+        GROUND TRUTH RULES:
+        ${relevantStandards}
+
+        Compare these notes and flag discrepancies using the GROUND TRUTH RULES provided.
       `;
     }
 
@@ -197,7 +207,7 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
         parts: [
           // Use object structure for inlineData to avoid Blob naming collision
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
-          { text: "Extract technical pass/fail criteria from this inspection standard document." }
+          { text: "You are a specialized technical auditor. Extract ALL critical pass/fail criteria, wear limits (e.g., mm, %), and regulatory safety requirements from this document. Organize them into a concise, high-density reference sheet. Focus on technical specifications that a mechanic would use to determine if a part must be replaced. Return ONLY the extracted rules as text." }
         ]
       }
     });

@@ -119,30 +119,49 @@ const AdminView: React.FC = () => {
     setDbHealth(health);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: StandardDocument['type']) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: StandardDocument['type'], label: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsProcessing(true);
     const reader = new FileReader();
     reader.onload = async () => {
-      const base64 = reader.result as string;
-      const extractedRules = await digestStandardDocument(base64, type);
+      try {
+        const base64 = reader.result as string;
+        console.log(`Starting digestion for ${type}...`);
+        const extractedRules = await digestStandardDocument(base64, type);
 
-      const newDoc: StandardDocument = {
-        id: crypto.randomUUID(),
-        type,
-        fileName: file.name,
-        uploadDate: Date.now(),
-        extractedRules
-      };
+        if (!extractedRules || extractedRules.length < 10) {
+          throw new Error("The AI was unable to extract meaningful rules from this document. Please ensure it's a clear, text-based PDF.");
+        }
 
-      await saveStandard(newDoc);
-      const updated = await getStandards();
-      setStandards(updated);
+        const newDoc: StandardDocument = {
+          id: crypto.randomUUID(),
+          type,
+          fileName: file.name,
+          uploadDate: Date.now(),
+          extractedRules
+        };
+
+        await saveStandard(newDoc);
+        const updated = await getStandards();
+        setStandards(updated);
+        console.log(`Successfully saved ${type} standard.`);
+        alert(`${label} processed and stored as a source of truth.`);
+      } catch (err: any) {
+        console.error("Standard Upload Error:", err);
+        alert(`Failed to process document: ${err.message || "Unknown error"}. If the file is very large, try a smaller version.`);
+      } finally {
+        setIsProcessing(false);
+        const health = await getDatabaseHealth();
+        setDbHealth(health);
+        // Clear input
+        e.target.value = '';
+      }
+    };
+    reader.onerror = () => {
+      alert("Error reading file. Please try again.");
       setIsProcessing(false);
-      const health = await getDatabaseHealth();
-      setDbHealth(health);
     };
     reader.readAsDataURL(file);
   };
@@ -213,8 +232,8 @@ const AdminView: React.FC = () => {
                   key={brand}
                   onClick={() => handleBrandChange(brand)}
                   className={`px-6 py-3 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${currentBrand === brand
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                     }`}
                 >
                   {currentBrand === brand && <i className="fas fa-check-circle"></i>}
@@ -264,7 +283,7 @@ const AdminView: React.FC = () => {
                     type="file"
                     accept="application/pdf"
                     className="hidden"
-                    onChange={(e) => handleFileUpload(e, item.key as any)}
+                    onChange={(e) => handleFileUpload(e, item.key as any, item.label)}
                   />
                 </div>
               );
