@@ -146,6 +146,7 @@ const AdminView: React.FC = () => {
 
         await saveStandard(newDoc);
         const updated = await getStandards();
+        console.log(`Updated standards list from DB:`, updated);
         setStandards(updated);
         console.log(`Successfully saved ${type} standard.`);
         alert(`${label} processed and stored as a source of truth.`);
@@ -200,11 +201,15 @@ const AdminView: React.FC = () => {
           <div className="hidden md:flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span className="text-[10px] font-black uppercase text-emerald-400">Persistence Active</span>
+              <span className="text-[10px] font-black uppercase text-emerald-400">
+                {dbHealth.isLocal ? 'Local Mode Active' : 'Cloud Persistence Active'}
+              </span>
             </div>
             <div className="h-6 w-px bg-white/10"></div>
             <div>
-              <p className="text-[8px] font-black uppercase text-slate-500">Local DB Storage</p>
+              <p className="text-[8px] font-black uppercase text-slate-500">
+                {dbHealth.isLocal ? 'Browser Memory' : 'Supabase Payload'}
+              </p>
               <p className="text-[10px] font-black text-white uppercase">{dbHealth.kbUsed} KB COMMITTED</p>
             </div>
           </div>

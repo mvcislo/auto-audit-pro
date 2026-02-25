@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS technicians (
 -- 3. Standards
 CREATE TABLE IF NOT EXISTS standards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    type TEXT NOT NULL,
+    type TEXT NOT NULL UNIQUE,
     file_name TEXT,
     upload_date BIGINT,
     extracted_rules TEXT,

@@ -30,7 +30,7 @@ export const saveBrand = async (brand: DealershipBrand) => {
   const { error } = await supabase
     .from('settings')
     .upsert({ key: BRAND_KEY, value: brand });
-  if (error) console.error('Error saving brand:', error);
+  if (error) throw error;
 };
 
 export const getBrand = async (): Promise<DealershipBrand> => {
@@ -71,7 +71,7 @@ export const saveAppraiser = async (appraiser: Appraiser) => {
   const { error } = await supabase
     .from('appraisers')
     .insert({ id: appraiser.id, name: appraiser.name });
-  if (error) console.error('Error saving appraiser:', error);
+  if (error) throw error;
 };
 
 export const deleteAppraiser = async (id: string) => {
@@ -84,7 +84,7 @@ export const deleteAppraiser = async (id: string) => {
     .from('appraisers')
     .delete()
     .eq('id', id);
-  if (error) console.error('Error deleting appraiser:', error);
+  if (error) throw error;
 };
 
 export const getTechnicians = async (): Promise<Technician[]> => {
@@ -111,7 +111,7 @@ export const saveTechnician = async (tech: Technician) => {
   const { error } = await supabase
     .from('technicians')
     .insert({ id: tech.id, name: tech.name, tech_number: tech.techNumber });
-  if (error) console.error('Error saving technician:', error);
+  if (error) throw error;
 };
 
 export const deleteTechnician = async (id: string) => {
@@ -124,7 +124,7 @@ export const deleteTechnician = async (id: string) => {
     .from('technicians')
     .delete()
     .eq('id', id);
-  if (error) console.error('Error deleting technician:', error);
+  if (error) throw error;
 };
 
 /**
@@ -153,7 +153,7 @@ export const saveCase = async (newCase: InspectionCase) => {
       status_history: newCase.statusHistory
     });
 
-  if (error) console.error('Error saving case:', error);
+  if (error) throw error;
 };
 
 export const getAllCases = async (): Promise<InspectionCase[]> => {
@@ -193,10 +193,7 @@ export const deleteCase = async (id: string): Promise<boolean> => {
     .delete()
     .eq('id', id);
 
-  if (error) {
-    console.error('Error deleting case:', error);
-    return false;
-  }
+  if (error) throw error;
   return true;
 };
 
@@ -211,21 +208,24 @@ export const saveStandard = async (doc: StandardDocument) => {
   }
   const { error } = await supabase
     .from('standards')
-    .upsert({
-      id: doc.id,
-      type: doc.type,
-      file_name: doc.fileName,
-      upload_date: doc.uploadDate,
-      extracted_rules: doc.extractedRules
-    });
-  if (error) console.error('Error saving standard:', error);
+    .upsert(
+      {
+        type: doc.type,
+        file_name: doc.fileName,
+        upload_date: doc.uploadDate,
+        extracted_rules: doc.extractedRules
+      },
+      { onConflict: 'type' }
+    );
+  if (error) throw error;
 };
 
 export const getStandards = async (): Promise<StandardDocument[]> => {
   if (!supabase) return getLocal('standards');
   const { data, error } = await supabase
     .from('standards')
-    .select('*');
+    .select('*')
+    .order('upload_date', { ascending: false });
 
   if (error) {
     console.error('Error fetching standards:', error);
@@ -245,10 +245,10 @@ export const getStandards = async (): Promise<StandardDocument[]> => {
  * Diagnostic utility for the Admin UI to show persistence health.
  */
 export const getDatabaseHealth = async () => {
-  const cases = (await getAllCases()).length;
-  const standards = (await getStandards()).length;
-  const appraisers = (await getAppraisers()).length;
-  const techs = (await getTechnicians()).length;
+  const cases = await getAllCases();
+  const standards = await getStandards();
+  const appraisers = await getAppraisers();
+  const techs = await getTechnicians();
 
   let kbUsed = 0;
   if (!supabase) {
@@ -256,11 +256,15 @@ export const getDatabaseHealth = async () => {
       const key = localStorage.key(i);
       if (key) kbUsed += (localStorage.getItem(key)?.length || 0);
     }
+  } else {
+    // Rough estimate for cloud data size
+    const allData = JSON.stringify([...cases, ...standards, ...appraisers, ...techs]);
+    kbUsed = allData.length;
   }
 
   return {
     isHealthy: true,
-    totalRecords: cases + standards + appraisers + techs,
+    totalRecords: cases.length + standards.length + appraisers.length + techs.length,
     kbUsed: Math.round(kbUsed / 1024),
     lastCommit: Date.now(),
     isLocal: !supabase
