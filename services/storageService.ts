@@ -316,3 +316,52 @@ export const getHistoricalContext = async (make: string, model: string, year: nu
     totalCases: filtered.length
   };
 };
+
+export const syncLocalToCloud = async (): Promise<{ success: boolean; count: number }> => {
+  if (!supabase) return { success: false, count: 0 };
+
+  const cases = getLocal(STORAGE_KEY);
+  const appraisers = getLocal('appraisers');
+  const technicians = getLocal('technicians');
+  const standards = getLocal('standards');
+  const brand = localStorage.getItem(BRAND_KEY);
+
+  let count = 0;
+
+  try {
+    // Sync Brand
+    if (brand) {
+      await saveBrand(brand as DealershipBrand);
+      count++;
+    }
+
+    // Sync Appraisers
+    for (const app of appraisers) {
+      await saveAppraiser(app);
+      count++;
+    }
+
+    // Sync Technicians
+    for (const tech of technicians) {
+      await saveTechnician(tech);
+      count++;
+    }
+
+    // Sync Standards
+    for (const doc of standards) {
+      await saveStandard(doc);
+      count++;
+    }
+
+    // Sync Cases
+    for (const c of cases) {
+      await saveCase(c);
+      count++;
+    }
+
+    return { success: true, count };
+  } catch (error) {
+    console.error("Sync Error:", error);
+    return { success: false, count };
+  }
+};

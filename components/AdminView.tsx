@@ -12,7 +12,8 @@ import {
   getTechnicians,
   saveTechnician,
   deleteTechnician,
-  getDatabaseHealth
+  getDatabaseHealth,
+  syncLocalToCloud
 } from '../services/storageService';
 import { digestStandardDocument } from '../services/geminiService';
 
@@ -21,7 +22,7 @@ const AdminView: React.FC = () => {
   const [currentBrand, setCurrentBrand] = useState<DealershipBrand>('Honda');
   const [appraisers, setAppraisers] = useState<Appraiser[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [dbHealth, setDbHealth] = useState({ isHealthy: true, totalRecords: 0, kbUsed: 0, lastCommit: Date.now() });
+  const [dbHealth, setDbHealth] = useState({ isHealthy: true, totalRecords: 0, kbUsed: 0, lastCommit: Date.now(), isLocal: true });
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasPaidKey, setHasPaidKey] = useState(false);
 
@@ -310,14 +311,16 @@ const AdminView: React.FC = () => {
               <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <span className="text-[10px] font-black text-slate-400 uppercase">Engine Status</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-900 uppercase">LOCAL STORAGE</span>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-[10px] font-black text-slate-900 uppercase">{dbHealth.isLocal ? 'LOCAL STORAGE' : 'SUPABASE CLOUD'}</span>
+                  <div className={`w-2 h-2 rounded-full ${dbHealth.isLocal ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}></div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <span className="text-[10px] font-black text-slate-400 uppercase">Sync Gateway</span>
-                <span className="text-[10px] font-black text-amber-600 uppercase">LOCAL ONLY</span>
+                <span className={`text-[10px] font-black uppercase ${dbHealth.isLocal ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {dbHealth.isLocal ? 'LOCAL ONLY' : 'CLOUD SYNC ACTIVE'}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -340,6 +343,25 @@ const AdminView: React.FC = () => {
                   <div className="w-full h-full bg-slate-400"></div>
                 </div>
               </div>
+
+              {!dbHealth.isLocal && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm("This will upload all local data to Supabase. Duplicate records will be updated. Continue?")) {
+                      const res = await syncLocalToCloud();
+                      if (res.success) {
+                        alert(`Successfully synced ${res.count} records to Supabase.`);
+                        refreshData();
+                      } else {
+                        alert("Sync failed. Check console for details.");
+                      }
+                    }
+                  }}
+                  className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100 transition-all flex items-center justify-center gap-2"
+                >
+                  <i className="fas fa-cloud-upload-alt"></i> Sync Local to Cloud
+                </button>
+              )}
             </div>
           </div>
 
