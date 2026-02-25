@@ -144,6 +144,7 @@ const AdminView: React.FC = () => {
           extractedRules
         };
 
+        console.log("Saving standard with payload:", newDoc);
         await saveStandard(newDoc);
         const updated = await getStandards();
         console.log(`Updated standards list from DB:`, updated);
@@ -152,7 +153,7 @@ const AdminView: React.FC = () => {
         alert(`${label} processed and stored as a source of truth.`);
       } catch (err: any) {
         console.error("Standard Upload Error:", err);
-        alert(`Failed to process document: ${err.message || "Unknown error"}. If the file is very large, try a smaller version.`);
+        alert(`UPLOAD FAILED (v2.1): ${err.message || "Unknown error"}. IMPORTANT: If this persists after running the SQL fix, please perform a HARD REFRESH (Ctrl + F5 or Cmd + Shift + R).`);
       } finally {
         setIsProcessing(false);
         const health = await getDatabaseHealth();
@@ -195,7 +196,7 @@ const AdminView: React.FC = () => {
         </div>
         <div className="relative z-10 flex justify-between items-end">
           <div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter">Ground Truth Library</h2>
+            <h2 className="text-3xl font-black uppercase tracking-tighter">Ground Truth Library (v2.1)</h2>
             <p className="text-slate-400 text-sm font-medium mt-2">Set your dealership identity and train the AI on specific brand rules.</p>
           </div>
           <div className="hidden md:flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">

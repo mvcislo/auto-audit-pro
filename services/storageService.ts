@@ -1,4 +1,5 @@
-
+import { createClient } from '@supabase/supabase-js';
+// storageService v2.1
 import { supabase } from './supabaseClient';
 import { InspectionCase, PerformanceStats, HistoricalAggregates, StandardDocument, DealershipBrand, Appraiser, Technician } from '../types';
 
@@ -139,11 +140,13 @@ export const saveCase = async (newCase: InspectionCase) => {
     setLocal(STORAGE_KEY, cases);
     return;
   }
+  const timestamp = newCase.timestamp ? new Date(newCase.timestamp).toISOString() : new Date().toISOString();
+
   const { error } = await supabase
     .from('inspection_cases')
     .upsert({
       id: newCase.id,
-      timestamp: new Date(newCase.timestamp).toISOString(),
+      timestamp,
       mode: newCase.mode,
       vehicle: newCase.vehicle,
       data: newCase.data,
@@ -206,13 +209,15 @@ export const saveStandard = async (doc: StandardDocument) => {
     setLocal('standards', standards);
     return;
   }
+  const uploadDate = doc.uploadDate ? new Date(doc.uploadDate).toISOString() : new Date().toISOString();
+
   const { error } = await supabase
     .from('standards')
     .upsert(
       {
         type: doc.type,
         file_name: doc.fileName,
-        upload_date: new Date(doc.uploadDate).toISOString(),
+        upload_date: uploadDate,
         extracted_rules: doc.extractedRules
       },
       { onConflict: 'type' }
