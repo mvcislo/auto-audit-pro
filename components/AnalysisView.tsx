@@ -284,9 +284,18 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
               <div className="mt-12">
                 <h4 className="text-sm font-black uppercase border-b-2 border-slate-900 pb-2 mb-6">Evidence Gallery</h4>
                 <div className="grid grid-cols-2 gap-4 print:print-grid">
-                  {caseData.data.attachments.map((img, i) => (
-                    <img key={i} src={img} className="w-full h-48 object-cover rounded-xl border border-slate-200 print:print-img" alt="" />
-                  ))}
+                  {caseData.data.attachments.map((img, i) => {
+                    const isPdf = img.startsWith('data:application/pdf');
+                    if (isPdf) {
+                      return (
+                        <div key={i} className="w-full h-48 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center text-red-500 gap-2 print:print-img">
+                          <i className="fas fa-file-pdf text-4xl"></i>
+                          <span className="text-[10px] font-black uppercase text-slate-400">Technical Document PDF</span>
+                        </div>
+                      );
+                    }
+                    return <img key={i} src={img} className="w-full h-48 object-cover rounded-xl border border-slate-200 print:print-img" alt="" />;
+                  })}
                 </div>
               </div>
             )}

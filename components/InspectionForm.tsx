@@ -401,12 +401,22 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
           </div>
           {data.attachments.length > 0 && (
             <div className="flex gap-4 mt-6 flex-wrap">
-              {data.attachments.map((base64, i) => (
-                <div key={i} className="relative group">
-                  <img src={base64} className="w-20 h-20 object-cover rounded-2xl border-2 border-indigo-200 shadow-lg transition-transform group-hover:scale-105" alt="" />
-                  <button type="button" onClick={() => setData(d => ({ ...d, attachments: d.attachments.filter((_, idx) => idx !== i) }))} className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px]"><i className="fas fa-times"></i></button>
-                </div>
-              ))}
+              {data.attachments.map((base64, i) => {
+                const isPdf = base64.startsWith('data:application/pdf');
+                return (
+                  <div key={i} className="relative group">
+                    {isPdf ? (
+                      <div className="w-20 h-20 bg-slate-100 rounded-2xl border-2 border-slate-200 shadow-lg flex flex-col items-center justify-center text-red-600 transition-transform group-hover:scale-105">
+                        <i className="fas fa-file-pdf text-2xl mb-1"></i>
+                        <span className="text-[8px] font-black uppercase text-slate-400">PDF DOC</span>
+                      </div>
+                    ) : (
+                      <img src={base64} className="w-20 h-20 object-cover rounded-2xl border-2 border-indigo-200 shadow-lg transition-transform group-hover:scale-105" alt="" />
+                    )}
+                    <button type="button" onClick={() => setData(d => ({ ...d, attachments: d.attachments.filter((_, idx) => idx !== i) }))} className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px]"><i className="fas fa-times"></i></button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
