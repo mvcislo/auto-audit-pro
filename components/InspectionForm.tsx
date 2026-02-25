@@ -323,7 +323,10 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
                   <select
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
                     value={data.technicianName}
-                    onChange={e => setData(d => ({ ...d, technicianName: e.target.value }))}
+                    onChange={e => {
+                      const tech = technicianList.find(t => t.name === e.target.value);
+                      setData(d => ({ ...d, technicianName: e.target.value, technicianNumber: tech?.techNumber }));
+                    }}
                   >
                     <option value="">Select Technician...</option>
                     {technicianList.map(tech => <option key={tech.id} value={tech.name}>{tech.name} (#{tech.techNumber})</option>)}

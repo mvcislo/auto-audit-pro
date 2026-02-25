@@ -211,40 +211,43 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
         <div className={`${showSource ? 'lg:col-span-8' : 'lg:col-span-12'} transition-all print:lg:col-span-12`}>
           <div className="print-full bg-white p-10 rounded-3xl shadow-2xl border border-slate-100 prose max-w-none print:shadow-none print:p-0">
 
-            {/* PRINT ONLY HEADER */}
-            <div className="hidden print:block print-header">
-              <div className="flex justify-between items-end mb-6">
+            {/* VEHICLE & PERSONNEL HEADER */}
+            <div className="report-header mb-10">
+              <div className="flex justify-between items-end mb-8 border-b-4 border-slate-900 pb-4">
                 <div>
-                  <h1 className="text-3xl font-black text-slate-900 m-0 uppercase leading-none">RECON AUDIT REPORT</h1>
-                  <p className="text-slate-500 font-bold m-0 uppercase text-[9px] tracking-widest mt-2">AutoAudit Pro | {caseData?.currentStatus} UNIT</p>
+                  <h1 className="text-4xl font-black text-slate-900 m-0 uppercase leading-none tracking-tighter">RECON AUDIT REPORT</h1>
+                  <p className="text-indigo-600 font-black m-0 uppercase text-xs tracking-[0.2em] mt-2">AutoAudit Pro | {caseData?.currentStatus} STRATEGY</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-black text-slate-900 m-0 uppercase">{new Date().toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                  <p className="text-[8px] font-bold text-slate-400 m-0 uppercase">ID: {caseData?.id.split('-')[0]}</p>
+                  <p className="text-sm font-black text-slate-900 m-0 uppercase">{new Date().toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                  <p className="text-[10px] font-bold text-slate-400 m-0 uppercase tracking-widest">REPORT ID: {caseData?.id.split('-')[0]}</p>
                 </div>
               </div>
 
               {caseData && (
-                <div className="bg-slate-50 p-6 rounded-xl border-2 border-slate-900 mb-8">
-                  <h4 className="text-[12px] font-black uppercase text-slate-900 mb-4 border-b border-slate-300 pb-2">Vehicle Profile</h4>
-                  <div className="grid grid-cols-2 gap-y-4">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">Year/Make/Model</p>
-                      <p className="text-lg font-black text-slate-900 m-0 leading-tight uppercase">
-                        {caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}
+                <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-3 gap-8">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Vehicle Identity</p>
+                    <p className="text-xl font-black text-slate-900 m-0 leading-tight uppercase">
+                      {caseData.vehicle.year} {caseData.vehicle.make} {caseData.vehicle.model}
+                    </p>
+                    <p className="text-xs font-mono font-bold text-slate-500 mt-1">{caseData.vehicle.vin}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Usage Context</p>
+                    <p className="text-lg font-black text-slate-900 m-0 uppercase">{caseData.vehicle.kilometres.toLocaleString()} KM</p>
+                    <p className="text-xs font-bold text-slate-500 mt-1 uppercase">Stock: {caseData.vehicle.stockNumber || 'PENDING'}</p>
+                  </div>
+                  <div className="col-span-2 md:col-span-1 border-t md:border-t-0 md:border-l border-slate-200 pt-6 md:pt-0 md:pl-8">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Personnel & Accountability</p>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-slate-900 m-0">
+                        <span className="text-slate-400 mr-2 uppercase text-[10px]">Appraiser:</span> {caseData.data.appraiserName}
                       </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">VIN / Serial #</p>
-                      <p className="text-sm font-mono font-bold text-slate-900 m-0">{caseData.vehicle.vin}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">Odometer (KM)</p>
-                      <p className="text-sm font-bold text-slate-900 m-0">{caseData.vehicle.kilometres.toLocaleString()} KM</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">Stock Number</p>
-                      <p className="text-sm font-black text-slate-900 m-0">{caseData.vehicle.stockNumber || 'PENDING'}</p>
+                      <p className="text-sm font-bold text-slate-900 m-0">
+                        <span className="text-slate-400 mr-2 uppercase text-[10px]">Technician:</span> {caseData.data.technicianName}
+                        {caseData.data.technicianNumber && <span className="ml-1 text-indigo-600">#{caseData.data.technicianNumber}</span>}
+                      </p>
                     </div>
                   </div>
                 </div>

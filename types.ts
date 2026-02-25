@@ -28,7 +28,7 @@ export enum OutcomeStatus {
 }
 
 export enum AnalysisMode {
-  AUDIT = 'Audit Mode', 
+  AUDIT = 'Audit Mode',
   APPRAISAL = 'Appraisal Mode'
 }
 
@@ -69,6 +69,7 @@ export interface InspectionData {
   hcuvOutcome: OutcomeStatus;
   technicianNotes: string;
   technicianName: string;
+  technicianNumber?: string;
   appraiserName: string;
   appraiserNotes: string;
   managerAppraisalEstimate: number;
@@ -100,7 +101,7 @@ export interface PerformanceStats {
   appraiserName: string;
   totalCases: number;
   avgVariance: number;
-  accuracyRating: number; 
+  accuracyRating: number;
   reliabilityTag: 'Aggressive' | 'Accurate' | 'Passive';
 }
 
