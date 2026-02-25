@@ -143,7 +143,7 @@ export const saveCase = async (newCase: InspectionCase) => {
     .from('inspection_cases')
     .upsert({
       id: newCase.id,
-      timestamp: newCase.timestamp,
+      timestamp: new Date(newCase.timestamp).toISOString(),
       mode: newCase.mode,
       vehicle: newCase.vehicle,
       data: newCase.data,
@@ -170,7 +170,7 @@ export const getAllCases = async (): Promise<InspectionCase[]> => {
 
   return (data || []).map(row => ({
     id: row.id,
-    timestamp: row.timestamp,
+    timestamp: new Date(row.timestamp).getTime(),
     mode: row.mode,
     vehicle: row.vehicle,
     data: row.data,
@@ -212,7 +212,7 @@ export const saveStandard = async (doc: StandardDocument) => {
       {
         type: doc.type,
         file_name: doc.fileName,
-        upload_date: doc.uploadDate,
+        upload_date: new Date(doc.uploadDate).toISOString(),
         extracted_rules: doc.extractedRules
       },
       { onConflict: 'type' }
@@ -236,7 +236,7 @@ export const getStandards = async (): Promise<StandardDocument[]> => {
     id: row.id,
     type: row.type,
     fileName: row.file_name,
-    uploadDate: row.upload_date,
+    uploadDate: new Date(row.upload_date).getTime(),
     extractedRules: row.extracted_rules
   }));
 };
@@ -359,6 +359,7 @@ export const syncLocalToCloud = async (): Promise<{ success: boolean; count: num
 
     // Sync Cases
     for (const c of cases) {
+      // Ensure we call saveCase which now handles the toISOString conversion
       await saveCase(c);
       count++;
     }

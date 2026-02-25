@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS standards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type TEXT NOT NULL UNIQUE,
     file_name TEXT,
-    upload_date BIGINT,
+    upload_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     extracted_rules TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS standards (
 -- 4. Inspection Cases
 CREATE TABLE IF NOT EXISTS inspection_cases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    timestamp BIGINT NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     mode TEXT NOT NULL,
     vehicle JSONB NOT NULL,
     data JSONB NOT NULL,
