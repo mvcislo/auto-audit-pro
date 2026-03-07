@@ -140,7 +140,7 @@ export const saveCase = async (newCase: InspectionCase) => {
     setLocal(STORAGE_KEY, cases);
     return;
   }
-  const timestamp = newCase.timestamp ? new Date(newCase.timestamp).toISOString() : new Date().toISOString();
+  const timestamp = newCase.timestamp || Date.now();
 
   const { error } = await supabase
     .from('inspection_cases')
@@ -221,7 +221,7 @@ export const saveStandard = async (doc: StandardDocument) => {
     setLocal('standards', standards);
     return;
   }
-  const uploadDate = doc.uploadDate ? new Date(doc.uploadDate).toISOString() : new Date().toISOString();
+  const uploadDate = doc.uploadDate || Date.now();
 
   const { error } = await supabase
     .from('standards')
