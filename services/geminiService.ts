@@ -97,7 +97,7 @@ export const analyzeInspection = async (
     parts.push({ text: promptText });
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: { parts },
       config: {
         systemInstruction: getSystemInstruction(mode, brand),
@@ -142,7 +142,7 @@ export const clarifyAnalysis = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         systemInstruction: "You are the Dealer Operations Consultant. Help the manager protect their gross margin. Be concise, firm, and technically accurate."
@@ -162,7 +162,7 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           // Use object structure for inlineData to avoid Blob naming collision
@@ -216,7 +216,7 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
   const ai = new GoogleGenAI({ apiKey });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64Data } },
@@ -244,7 +244,7 @@ export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
@@ -274,7 +274,7 @@ export const parseServiceClaim = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
