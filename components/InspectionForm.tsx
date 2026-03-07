@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Vehicle, InspectionData, InspectionType, OutcomeStatus, AnalysisMode, Appraiser, Technician, InventoryProgram } from '../types';
-import { decodeVIN, extractVINFromImage, parseVAutoAppraisal } from '../services/geminiService';
+import { decodeVIN, extractVINFromImage, parseVAutoAppraisal, parseServiceClaim } from '../services/geminiService';
 import { getAppraisers, getTechnicians } from '../services/storageService';
 
 interface InspectionFormProps {
@@ -177,6 +177,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
               ...d,
               appraiserName: result.appraiserName || d.appraiserName,
               appraiserNotes: result.appraiserNotes || d.appraiserNotes,
+              managerAppraisalEstimate: result.managerAppraisalEstimate || d.managerAppraisalEstimate,
               attachments: [...d.attachments, base64]
             };
             console.log("Updating inspection data state to:", next);
@@ -199,6 +200,38 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     reader.onerror = (err) => {
       console.error("FileReader error:", err);
       setIsExtractingVin(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleShopClaimUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsExtractingVin(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      try {
+        const result = await parseServiceClaim(base64);
+        if (result) {
+          setData(d => ({
+            ...d,
+            technicianName: result.technicianName || d.technicianName,
+            serviceDepartmentEstimate: result.serviceDepartmentEstimate || d.serviceDepartmentEstimate,
+            technicianNotes: result.technicianNotes || d.technicianNotes,
+            attachments: [...d.attachments, base64]
+          }));
+          alert("Shop Claim imported successfully!");
+        } else {
+          alert("AI could not extract data from this Shop Claim. Please ensure it is a clear scan or digital PDF.");
+        }
+      } catch (err) {
+        console.error("Shop claim upload error:", err);
+      } finally {
+        setIsExtractingVin(false);
+        e.target.value = '';
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -247,7 +280,11 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
                 <i className="fas fa-file-pdf"></i> Import vAuto
               </button>
               <input type="file" id="vauto-upload" className="hidden" accept=".pdf" onChange={handleVAutoUpload} />
-              <button type="button" onClick={startScanner} className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 uppercase">
+              <button type="button" onClick={() => document.getElementById('shop-upload')?.click()} className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 uppercase">
+                <i className="fas fa-wrench"></i> Import Shop Claim
+              </button>
+              <input type="file" id="shop-upload" className="hidden" accept=".pdf" onChange={handleShopClaimUpload} />
+              <button type="button" onClick={startScanner} className="text-[10px] font-black bg-slate-800 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 uppercase">
                 <i className="fas fa-camera"></i> Scan VIN
               </button>
             </div>

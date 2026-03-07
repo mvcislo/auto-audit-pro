@@ -252,7 +252,7 @@ export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
-          { text: "Extract vehicle info from this vAuto trade appraisal. Return a JSON object with EXACTLY these keys and types: { \"vin\": string, \"year\": number, \"make\": string, \"model\": string, \"kilometres\": number, \"appraiserName\": string, \"appraiserNotes\": string }. If a numeric value has commas or text, return only the digits as a number. Return ONLY the raw JSON." }
+          { text: "Extract vehicle info from this vAuto trade appraisal. Return a JSON object with EXACTLY these keys and types: { \"vin\": string, \"year\": number, \"make\": string, \"model\": string, \"kilometres\": number, \"appraiserName\": string, \"appraiserNotes\": string, \"managerAppraisalEstimate\": number }. If a numeric value has commas or text, return only the digits as a number. Return ONLY the raw JSON." }
         ]
       }
     });
@@ -270,3 +270,33 @@ export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
     return null;
   }
 };
+
+/**
+ * Extracts vehicle details and technician notes from a Service Shop Claim or MPI PDF.
+ */
+export const parseServiceClaim = async (base64: string): Promise<any> => {
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
+          { text: "Extract repair info from this Service Shop Claim or Multi-Point Inspection. Return a JSON object with EXACTLY these keys and types: { \"technicianName\": string, \"serviceDepartmentEstimate\": number, \"technicianNotes\": string }. If a numeric value has commas or text, return only the digits as a number. For 'technicianNotes', summarize all requested repairs. Return ONLY the raw JSON." }
+        ]
+      }
+    });
+    const text = response.text || '{}';
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonStr = text.substring(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonStr);
+    }
+    return null;
+  } catch (e) {
+    console.error("Service Claim Parse Error:", e);
+    return null;
+  }
+};
+
