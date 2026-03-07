@@ -19,6 +19,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
   const [showSource, setShowSource] = useState(true);
   const [managerQuery, setManagerQuery] = useState('');
   const [isQuerying, setIsQuerying] = useState(false);
+  const [attachedFindings, setAttachedFindings] = useState<{ question: string, answer: string }[]>([]);
 
   const handleLocalDelete = async () => {
     if (!caseData) return;
@@ -327,8 +328,25 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
             )}
 
             {/* Evidence Gallery (2-Column Grid) */}
+            {/* ADDITIONAL FINDINGS FROM AI QUERIES */}
+            {attachedFindings.length > 0 && (
+              <div className="mt-12 border-t-4 border-slate-900 pt-8">
+                <h4 className="text-xl font-black text-slate-900 uppercase mb-6 tracking-tighter">Additional Audit Findings & Clarifications</h4>
+                <div className="space-y-8">
+                  {attachedFindings.map((finding, idx) => (
+                    <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 break-inside-avoid">
+                      <p className="text-[10px] font-black text-indigo-600 uppercase mb-2 tracking-widest">— Inquiry: {finding.question}</p>
+                      <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none">
+                        {formatContent(finding.answer)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {caseData && caseData.data.attachments.length > 0 && (
-              <div className="mt-12">
+              <div className="mt-12 pb-12">
                 <h4 className="text-sm font-black uppercase border-b-2 border-slate-900 pb-2 mb-6">Evidence Gallery</h4>
                 <div className="grid grid-cols-2 gap-4 print:print-grid">
                   {caseData.data.attachments.map((img, i) => {
@@ -371,14 +389,32 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
 
             {clarifications.length > 0 && (
               <div className="mt-8 space-y-4 no-print border-t pt-8">
-                {clarifications.map((item, idx) => (
-                  <div key={idx} className="space-y-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase">Manager Query: {item.question}</p>
-                    <div className="bg-indigo-50 p-4 rounded-xl text-xs text-indigo-900 leading-relaxed font-medium">
-                      {item.answer}
+                {clarifications.map((item, idx) => {
+                  const isAttached = attachedFindings.some(f => f.question === item.question);
+                  return (
+                    <div key={idx} className="space-y-2 group">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-400 uppercase">Manager Query: {item.question}</p>
+                        <button
+                          onClick={() => {
+                            if (isAttached) {
+                              setAttachedFindings(prev => prev.filter(f => f.question !== item.question));
+                            } else {
+                              setAttachedFindings(prev => [...prev, item]);
+                            }
+                          }}
+                          className={`text-[10px] font-black px-3 py-1 rounded-lg transition-all ${isAttached ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+                        >
+                          <i className={`fas ${isAttached ? 'fa-check' : 'fa-plus'} mr-1`}></i>
+                          {isAttached ? 'Added to Report' : 'Add to Report'}
+                        </button>
+                      </div>
+                      <div className="bg-indigo-50 p-4 rounded-xl text-xs text-indigo-900 leading-relaxed font-medium">
+                        {item.answer}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
