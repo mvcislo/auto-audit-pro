@@ -2,7 +2,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Vehicle, InspectionData, InspectionType, OutcomeStatus, AnalysisMode, Appraiser, Technician, InventoryProgram } from '../types';
 import { decodeVIN, extractVINFromImage, parseVAutoAppraisal, parseServiceClaim } from '../services/geminiService';
-import { getAppraisers, getTechnicians } from '../services/storageService';
+import { getAppraisers, getTechnicians, getBrand } from '../services/storageService';
+import { DealershipBrand } from '../types';
 
 interface InspectionFormProps {
   onAnalyze: (vehicle: Vehicle, data: InspectionData, mode: AnalysisMode) => void;
@@ -23,6 +24,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
 
   const [appraiserList, setAppraiserList] = useState<Appraiser[]>([]);
   const [technicianList, setTechnicianList] = useState<Technician[]>([]);
+  const [brand, setBrand] = useState<DealershipBrand>('Honda');
 
   const [vehicle, setVehicle] = useState<Vehicle>({
     vin: '',
@@ -54,12 +56,14 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
   useEffect(() => {
     const fetchSelectData = async () => {
       try {
-        const [appraisers, technicians] = await Promise.all([
+        const [appraisers, technicians, currentBrand] = await Promise.all([
           getAppraisers(),
-          getTechnicians()
+          getTechnicians(),
+          getBrand()
         ]);
         setAppraiserList(appraisers);
         setTechnicianList(technicians);
+        setBrand(currentBrand);
       } catch (error) {
         console.error("Error fetching list data:", error);
       }
@@ -67,20 +71,56 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     fetchSelectData();
   }, []);
 
-  // Honda Eligibility Logic
+  // Brand-aware Eligibility Logic
   const checkEligibility = (prog: InventoryProgram) => {
     const age = currentYear - vehicle.year;
     const kms = vehicle.kilometres;
 
-    if (prog === InventoryProgram.HCUV) {
-      if (age > 6) return { ok: false, reason: 'Age > 6yrs' };
-      if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+    // Honda Specifics
+    if (brand === 'Honda') {
+      if (prog === InventoryProgram.HCUV) {
+        if (age > 10) return { ok: false, reason: 'Age > 10yrs' }; // Updated to modern standards
+        if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+      }
+      if (prog === InventoryProgram.HAPO) {
+        if (age > 10) return { ok: false, reason: 'Age > 10yrs' };
+        if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
+      }
     }
-    if (prog === InventoryProgram.HAPO) {
-      if (age > 10) return { ok: false, reason: 'Age > 10yrs' };
-      if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
+
+    // Toyota Specifics (TCUV)
+    if (brand === 'Toyota') {
+      if (prog === InventoryProgram.HCUV) { // TCUV
+        if (age > 6) return { ok: false, reason: 'Age > 6yrs' };
+        if (kms > 140000) return { ok: false, reason: 'KM > 140k' };
+      }
     }
+
+    // GM / CBG Specifics
+    if (brand === 'CBG' || brand === 'Cadillac') {
+      if (prog === InventoryProgram.HCUV) { // GM Certified
+        if (age > 6) return { ok: false, reason: 'Age > 6yrs' };
+        if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+      }
+    }
+
     return { ok: true };
+  };
+
+  const getProgramLabel = (prog: InventoryProgram) => {
+    if (brand === 'Honda') return prog; // HCUV, HAPO
+    if (brand === 'Toyota') {
+      if (prog === InventoryProgram.HCUV) return 'TCUV';
+      if (prog === InventoryProgram.HAPO) return 'T-HAPO';
+    }
+    if (brand === 'CBG' || brand === 'Cadillac') {
+      if (prog === InventoryProgram.HCUV) return 'GM Certified';
+      if (prog === InventoryProgram.HAPO) return 'CBG Standard';
+    }
+    // Fallback for others
+    if (prog === InventoryProgram.HCUV) return 'Certified Plus';
+    if (prog === InventoryProgram.HAPO) return 'Certified Select';
+    return 'Certified';
   };
 
   // Automatically adjust selected program if it becomes ineligible
@@ -316,7 +356,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
                   const eligibility = checkEligibility(p);
                   return (
                     <option key={p} value={p} disabled={!eligibility.ok} className={!eligibility.ok ? 'text-slate-300' : ''}>
-                      {p} {eligibility.ok ? 'Standard' : `(${eligibility.reason})`}
+                      {getProgramLabel(p)} {eligibility.ok ? '' : `(${eligibility.reason})`}
                     </option>
                   );
                 })}
