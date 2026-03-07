@@ -12,33 +12,27 @@ const getMimeType = (base64: string): string => {
 const getSystemInstruction = (mode: AnalysisMode, brand: DealershipBrand) => {
   if (mode === AnalysisMode.APPRAISAL) {
     return `You are the Lead Appraiser and Recon Specialist for a high-volume ${brand} dealership.
-YOUR MISSION: Calculate a highly accurate Reconditioning Estimate based solely on manager intake notes.
-
-MANDATORY RETAIL PREP PACKAGE (ALWAYS INCLUDE):
-- Ontario Safety Inspection Fee: $200
-- 4-Wheel Balance: $80
-- 4-Wheel Alignment: $140
-- Professional Detail: $250
-- TOTAL FIXED BASE: $670
+YOUR MISSION: Calculate a highly accurate Reconditioning Estimate based solely on manager intake notes and your [DEALERSHIP RULES].
 
 STRATEGY:
-1. Start with the $670 Fixed Base.
-2. Analyze Appraiser Notes for specific wear items (e.g., "tires low", "brakes pulsing", "dent on hood").
-3. Estimate repairs using market-rate labor/parts for this specific vehicle.
-4. If Appraiser says "CLEAN", assume zero additional mechanical repairs beyond the Fixed Base.
-5. Provide a clear, categorized breakdown of these costs.
-6. Place [DETECTED_TOTAL: 1234.56] at the very end of your response.`;
+1. AUTHORITY: The provided [DEALERSHIP RULES] are your Bible. If they specify mandatory prep items (e.g., Detail, Safety Fee, Oil Change), use those exact costs. 
+2. If [DEALERSHIP RULES] are missing or don't specify fees, use your knowledge of standard market rates for ${brand} vehicles.
+3. Analyze Appraiser Notes for specific wear items (e.g., "tires low", "brakes pulsing").
+4. If Appraiser says "CLEAN", assume zero mechanical repairs beyond the mandatory prep dictated by [DEALERSHIP RULES].
+5. Provide a clear, categorized breakdown.
+6. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end of your response.`;
   }
 
   return `You are the Lead Auditor for a high-volume ${brand} Dealership.
 YOUR MISSION: Protect Dealership Gross Margin by identifying discrepancies between Appraiser intake notes and Technician service quotes.
 
 STRATEGIC AUDIT RULES:
-1. "CLEAN CAR" RULE: If an Appraiser notes a car is "Clean", this refers to its overall condition. It DOES NOT mean the vehicle skips the detail. Every retail unit requires a Professional Detail ($250).
-2. DISCREPANCY AUDIT: If Appraiser says "Brakes feel new" but Tech quotes "Brake Job", flag it as a potential gross leak.
-3. VISUAL INSPECTION: Analyze all attached photos. Compare the visual state of the vehicle (e.g., brake pad thickness, tire tread, rust, leaks) against the GROUND TRUTH RULES.
-4. Citations: Reference specific manufacturer standards when flagging a failure.
-5. Place [DETECTED_TOTAL: 1234.56] at the very end.`;
+1. GROUND TRUTH AUTHORITY: The [DEALERSHIP RULES] and [${brand} RULES] provided in the prompt are the ABSOLUTE authority. They are the gospel for how this store operates.
+2. DYNAMIC PREP: Do not assume a mandatory $250 detail or $200 safety unless specified in the [DEALERSHIP RULES]. If the rules say every car gets an oil change, enforce it. If they don't, do not invent the requirement.
+3. DISCREPANCY AUDIT: If Appraiser notes a car is "Clean" but Technician quotes significant repairs, investigate if those repairs align with the [DEALERSHIP RULES] standards.
+4. VISUAL INSPECTION: Compare the visual state of the vehicle in photos against the specific standards in the [DEALERSHIP RULES].
+5. Citations: Reference specific clauses from the Ground Truth documents when flagging a variance.
+6. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end.`;
 };
 
 /**
@@ -82,7 +76,7 @@ export const analyzeInspection = async (
         GROUND TRUTH RULES:
         ${relevantStandards}
 
-        GOAL: Calculate total estimated recon starting with the $670 Mandatory Base.
+        GOAL: Calculate total estimated recon audit based on the provided local standards.
       `;
     } else {
       promptText = `
