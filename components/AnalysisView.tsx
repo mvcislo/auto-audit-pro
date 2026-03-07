@@ -11,9 +11,10 @@ interface AnalysisViewProps {
   onReset: () => void;
   onNew: () => void;
   onUpdateCase?: (updated: InspectionCase) => void;
+  brand: string;
 }
 
-const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseData, onReset, onNew, onUpdateCase }) => {
+const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseData, onReset, onNew, onUpdateCase, brand }) => {
   const currentYear = new Date().getFullYear();
   const [showSource, setShowSource] = useState(true);
   const [managerQuery, setManagerQuery] = useState('');
@@ -41,15 +42,51 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
     const age = currentYear - caseData.vehicle.year;
     const kms = caseData.vehicle.kilometres;
 
-    if (status === PostReviewStatus.HCUV) {
-      if (age > 6) return { ok: false, reason: 'Age > 6yr' };
-      if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+    // Honda Specifics
+    if (brand === 'Honda') {
+      if (status === PostReviewStatus.HCUV) {
+        if (age > 10) return { ok: false, reason: 'Age > 10yr' };
+        if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+      }
+      if (status === PostReviewStatus.HAPO) {
+        if (age > 10) return { ok: false, reason: 'Age > 10yr' };
+        if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
+      }
     }
-    if (status === PostReviewStatus.HAPO) {
-      if (age > 10) return { ok: false, reason: 'Age > 10yr' };
-      if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
+
+    // Toyota Specifics
+    if (brand === 'Toyota') {
+      if (status === PostReviewStatus.HCUV) {
+        if (age > 6) return { ok: false, reason: 'Age > 6yr' };
+        if (kms > 140000) return { ok: false, reason: 'KM > 140k' };
+      }
     }
+
+    // GM / CBG Specifics
+    if (brand === 'CBG' || brand === 'Cadillac') {
+      if (status === PostReviewStatus.HCUV) {
+        if (age > 6) return { ok: false, reason: 'Age > 6yr' };
+        if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
+      }
+    }
+
     return { ok: true };
+  };
+
+  const getProgramLabel = (status: PostReviewStatus) => {
+    if (brand === 'Honda') return status; // HCUV, HAPO
+    if (brand === 'Toyota') {
+      if (status === PostReviewStatus.HCUV) return 'TCUV';
+      if (status === PostReviewStatus.HAPO) return 'T-HAPO';
+    }
+    if (brand === 'CBG' || brand === 'Cadillac') {
+      if (status === PostReviewStatus.HCUV) return 'GM Certified';
+      if (status === PostReviewStatus.HAPO) return 'CBG Standard';
+    }
+    // Fallback for others
+    if (status === PostReviewStatus.HCUV) return 'Certified Plus';
+    if (status === PostReviewStatus.HAPO) return 'Certified Select';
+    return status;
   };
 
   const determineMoveType = (from: PostReviewStatus, to: PostReviewStatus): 'Upgrade' | 'Downgrade' | 'Lateral' => {
@@ -146,7 +183,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
           {caseData && (
             <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-xl border border-indigo-100">
               <span className="text-[10px] font-black text-indigo-700 uppercase">Current Tier:</span>
-              <span className="text-xs font-black text-indigo-900">{caseData.currentStatus}</span>
+              <span className="text-xs font-black text-indigo-900">{getProgramLabel(caseData.currentStatus)}</span>
             </div>
           )}
         </div>
@@ -184,7 +221,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
                       const eligibility = checkEligibility(s);
                       return (
                         <option key={s} value={s} disabled={!eligibility.ok} className={eligibility.ok ? 'text-slate-900' : 'text-slate-400 font-normal'}>
-                          {s} {eligibility.ok ? '' : `(${eligibility.reason})`}
+                          {getProgramLabel(s)} {eligibility.ok ? '' : `(${eligibility.reason})`}
                         </option>
                       );
                     })}
@@ -196,7 +233,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
                     <p className="text-[9px] font-black uppercase text-slate-400">History & Variance</p>
                     {caseData.statusHistory.map((h, i) => (
                       <div key={i} className="flex items-center justify-between text-[10px] bg-white/5 p-2 rounded-lg">
-                        <span className="font-bold">{h.from} → {h.to}</span>
+                        <span className="font-bold">{getProgramLabel(h.from)} → {getProgramLabel(h.to)}</span>
                         <span className={`font-black uppercase ${h.type === 'Upgrade' ? 'text-emerald-400' : h.type === 'Downgrade' ? 'text-red-400' : 'text-slate-400'}`}>
                           {h.type}
                         </span>
@@ -231,7 +268,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
               <div className="flex justify-between items-end mb-8 border-b-4 border-slate-900 pb-4">
                 <div>
                   <h1 className="text-4xl font-black text-slate-900 m-0 uppercase leading-none tracking-tighter">RECON AUDIT REPORT</h1>
-                  <p className="text-indigo-600 font-black m-0 uppercase text-xs tracking-[0.2em] mt-2">AutoAudit Pro | {caseData?.currentStatus} STRATEGY</p>
+                  <p className="text-indigo-600 font-black m-0 uppercase text-xs tracking-[0.2em] mt-2">AutoAudit Pro | {getProgramLabel(caseData?.currentStatus as PostReviewStatus)} STRATEGY</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-black text-slate-900 m-0 uppercase">{new Date().toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })}</p>

@@ -7,7 +7,8 @@ import AnalysisView from './components/AnalysisView';
 import AdminView from './components/AdminView';
 import { Vehicle, InspectionData, InspectionCase, AnalysisMode, PostReviewStatus } from './types';
 import { analyzeInspection } from './services/geminiService';
-import { saveCase, getHistoricalContext } from './services/storageService';
+import { saveCase, getHistoricalContext, getBrand } from './services/storageService';
+import { DealershipBrand } from './types';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'audit' | 'admin'>('dashboard');
@@ -18,6 +19,15 @@ const App: React.FC = () => {
   const [autoFilledVehicle, setAutoFilledVehicle] = useState<Partial<Vehicle>>({});
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('darkMode') === 'true');
+  const [brand, setBrand] = useState<DealershipBrand>('Honda');
+
+  useEffect(() => {
+    const fetchBrand = async () => {
+      const b = await getBrand();
+      setBrand(b);
+    };
+    fetchBrand();
+  }, [currentView]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -95,6 +105,7 @@ const App: React.FC = () => {
           content={currentAnalysis.text}
           citations={currentAnalysis.citations}
           caseData={activeCase || undefined}
+          brand={brand}
           onUpdateCase={handleUpdateCase}
           onReset={() => {
             setShowAnalysis(false);
