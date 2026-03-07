@@ -12,29 +12,33 @@ const getMimeType = (base64: string): string => {
 const getSystemInstruction = (mode: AnalysisMode, brand: DealershipBrand) => {
   if (mode === AnalysisMode.APPRAISAL) {
     return `You are the Lead Appraiser and Recon Specialist for a high-volume ${brand} dealership.
-YOUR MISSION: Calculate a highly accurate Reconditioning Estimate based solely on manager intake notes and your [DEALERSHIP RULES].
+YOUR MISSION: Calculate a highly accurate Reconditioning Estimate based solely on manager intake notes.
+
+MANDATORY RETAIL PREP PACKAGE (ALWAYS INCLUDE):
+- Ontario Safety Inspection Fee: $200
+- 4-Wheel Balance: $80
+- 4-Wheel Alignment: $140
+- Professional Detail: $250
+- TOTAL FIXED BASE: $670
 
 STRATEGY:
-1. AUTHORITY: The provided [DEALERSHIP RULES] are your Bible. If they specify mandatory prep items (e.g., Detail, Safety Fee, Oil Change), use those exact costs. 
-2. QUALITY PRICING: Use Google Search to find current market pricing for PREMIUM parts (e.g., Bosch, Akebono, Moog). Avoid low-end "economy" parts. 
-3. LINKED SOURCES: When providing counts or estimates, cite a legitimate source (e.g., RockAuto, PartsAvatar) with a direct link to the part if possible.
-4. Analyze Appraiser Notes for specific wear items (e.g., "tires low", "brakes pulsing").
-5. If Appraiser says "CLEAN", assume zero mechanical repairs beyond the mandatory prep dictated by [DEALERSHIP RULES].
-6. Provide a clear, categorized breakdown.
-7. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end of your response.`;
+1. Start with the $670 Fixed Base.
+2. Analyze Appraiser Notes for specific wear items (e.g., "tires low", "brakes pulsing", "dent on hood").
+3. Estimate repairs using market-rate labor/parts for this specific vehicle.
+4. If Appraiser says "CLEAN", assume zero additional mechanical repairs beyond the Fixed Base.
+5. Provide a clear, categorized breakdown of these costs.
+6. Place [DETECTED_TOTAL: 1234.56] at the very end of your response.`;
   }
 
   return `You are the Lead Auditor for a high-volume ${brand} Dealership.
 YOUR MISSION: Protect Dealership Gross Margin by identifying discrepancies between Appraiser intake notes and Technician service quotes.
 
 STRATEGIC AUDIT RULES:
-1. GROUND TRUTH AUTHORITY: The [DEALERSHIP RULES] and [${brand} RULES] provided in the prompt are the ABSOLUTE authority. 
-2. DYNAMIC PREP: Do not assume a mandatory $250 detail or $200 safety unless specified in the [DEALERSHIP RULES].
-3. PRICING AUDIT: Use Google Search to verify Technician quotes. If the shop quotes a massive markup, find alternative PREMIUM part pricing (e.g., Akebono, Brembo, Bilstein).
-4. GROUNDING & LINKS: Ensure all findings are grounded in legitimate sources (e.g., Manufacturer CPO manuals or reputable parts retailers). Provide direct links [Label](URL) to the parts you find as alternatives.
-5. NO LOW-END PARTS: Only suggest OEM Equivalent or Premium Aftermarket options. No budget/white-box parts.
-6. VISUAL INSPECTION: Compare the visual state of the vehicle in photos against the specific standards in the [DEALERSHIP RULES].
-7. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end.`;
+1. "CLEAN CAR" RULE: If an Appraiser notes a car is "Clean", this refers to its overall condition. It DOES NOT mean the vehicle skips the detail. Every retail unit requires a Professional Detail ($250).
+2. DISCREPANCY AUDIT: If Appraiser says "Brakes feel new" but Tech quotes "Brake Job", flag it as a potential gross leak.
+3. VISUAL INSPECTION: Analyze all attached photos. Compare the visual state of the vehicle (e.g., brake pad thickness, tire tread, rust, leaks) against the GROUND TRUTH RULES.
+4. Citations: Reference specific manufacturer standards when flagging a failure.
+5. Place [DETECTED_TOTAL: 1234.56] at the very end.`;
 };
 
 /**
@@ -63,11 +67,12 @@ export const analyzeInspection = async (
       }
     });
 
-    // Inject Ground Truth Standards
+    // Inject Ground Truth Standards (brand-scoped — only this brand's manuals)
     const standards = await getStandardsForBrand(brand);
     const relevantStandards = standards.map(s => `[${s.type} RULES]: ${s.extractedRules}`).join('\n\n');
 
     let promptText = '';
+
     if (mode === AnalysisMode.APPRAISAL) {
       promptText = `
         --- APPRAISAL TASK ---
@@ -77,7 +82,7 @@ export const analyzeInspection = async (
         GROUND TRUTH RULES:
         ${relevantStandards}
 
-        GOAL: Calculate total estimated recon audit based on the provided local standards. If you suggest parts, find 2-3 PREMIUM aftermarket options and provide direct links.
+        GOAL: Calculate total estimated recon starting with the $670 Mandatory Base.
       `;
     } else {
       promptText = `
@@ -96,7 +101,7 @@ export const analyzeInspection = async (
     parts.push({ text: promptText });
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: { parts },
       config: {
         systemInstruction: getSystemInstruction(mode, brand),
@@ -104,6 +109,7 @@ export const analyzeInspection = async (
       }
     });
 
+    // Extract generated text directly from response.text property
     const fullText = response.text || "Analysis failed.";
     const totalMatch = fullText.match(/\[DETECTED_TOTAL:\s*([\d,.]+)\]/);
     const detectedTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : undefined;
@@ -114,7 +120,7 @@ export const analyzeInspection = async (
       citations: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
     };
   } catch (error) {
-    console.error("analyzeInspection failed:", error);
+    console.error(error);
     throw error;
   }
 };
@@ -140,7 +146,7 @@ export const clarifyAnalysis = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         systemInstruction: "You are the Dealer Operations Consultant. Help the manager protect their gross margin. Be concise, firm, and technically accurate."
@@ -148,7 +154,7 @@ export const clarifyAnalysis = async (
     });
     return response.text || "Clarification unavailable.";
   } catch (error) {
-    console.error("clarifyAnalysis failed:", error);
+    console.error(error);
     return "Error generating clarification.";
   }
 };
@@ -160,7 +166,7 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           // Use object structure for inlineData to avoid Blob naming collision
@@ -214,7 +220,7 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
   const ai = new GoogleGenAI({ apiKey });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64Data } },
@@ -242,7 +248,7 @@ export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
@@ -272,7 +278,7 @@ export const parseServiceClaim = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
@@ -293,4 +299,3 @@ export const parseServiceClaim = async (base64: string): Promise<any> => {
     return null;
   }
 };
-
