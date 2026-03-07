@@ -48,15 +48,8 @@ export const analyzeInspection = async (
 ): Promise<{ text: string; detectedTotal?: number; citations: any[] }> => {
   try {
     const brand = await getBrand();
-    const genAI = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY || '');
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
     const { vehicle, data } = currentCase;
-
-    // Initialize model with system instruction and tools
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: getSystemInstruction(mode, brand),
-      tools: [{ googleSearchRetrieval: {} }] as any
-    });
 
     const parts: any[] = [];
 
@@ -102,17 +95,23 @@ export const analyzeInspection = async (
 
     parts.push({ text: promptText });
 
-    const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
-    const response = result.response;
-    const fullText = response.text() || "Analysis failed.";
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: { parts },
+      config: {
+        systemInstruction: getSystemInstruction(mode, brand),
+        tools: [{ googleSearch: {} }]
+      }
+    });
 
+    const fullText = response.text || "Analysis failed.";
     const totalMatch = fullText.match(/\[DETECTED_TOTAL:\s*([\d,.]+)\]/);
     const detectedTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : undefined;
 
     return {
       text: fullText,
       detectedTotal,
-      citations: (response as any).candidates?.[0]?.groundingMetadata?.groundingChunks || []
+      citations: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
     };
   } catch (error) {
     console.error("analyzeInspection failed:", error);
@@ -124,29 +123,30 @@ export const clarifyAnalysis = async (
   originalCase: InspectionCase,
   query: string
 ): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+  const { vehicle, data, analysis } = originalCase;
+
+  const prompt = `
+    --- AUDIT CLARIFICATION REQUEST ---
+    VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model}
+    APPRAISER: "${data.appraiserNotes}"
+    TECH: "${data.technicianNotes}"
+    ORIGINAL AUDIT FINDINGS: ${analysis}
+
+    MANAGER QUERY: "${query}"
+
+    Provide a professional, direct clarification. If the manager is asking for a "combat script" or how to push back, provide specific technical counter-arguments based on Ontario Safety or HCUV standards.
+  `;
+
   try {
-    const genAI = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY || '');
-    const { vehicle, data, analysis } = originalCase;
-
-    const model = genAI.getGenerativeModel({
+    const response = await ai.models.generateContent({
       model: 'gemini-1.5-flash',
-      systemInstruction: "You are the Dealer Operations Consultant. Help the manager protect their gross margin. Be concise, firm, and technically accurate."
+      contents: prompt,
+      config: {
+        systemInstruction: "You are the Dealer Operations Consultant. Help the manager protect their gross margin. Be concise, firm, and technically accurate."
+      }
     });
-
-    const prompt = `
-      --- AUDIT CLARIFICATION REQUEST ---
-      VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model}
-      APPRAISER: "${data.appraiserNotes}"
-      TECH: "${data.technicianNotes}"
-      ORIGINAL AUDIT FINDINGS: ${analysis}
-
-      MANAGER QUERY: "${query}"
-
-      Provide a professional, direct clarification. If the manager is asking for a "combat script" or how to push back, provide specific technical counter-arguments based on Ontario Safety or HCUV standards.
-    `;
-
-    const result = await model.generateContent(prompt);
-    return result.response.text() || "Clarification unavailable.";
+    return response.text || "Clarification unavailable.";
   } catch (error) {
     console.error("clarifyAnalysis failed:", error);
     return "Error generating clarification.";
