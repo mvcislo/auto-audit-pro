@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import InspectionForm from './components/InspectionForm';
@@ -17,6 +17,16 @@ const App: React.FC = () => {
   const [autoFilledData, setAutoFilledData] = useState<Partial<InspectionData>>({});
   const [autoFilledVehicle, setAutoFilledVehicle] = useState<Partial<Vehicle>>({});
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('darkMode') === 'true');
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', String(isDarkMode));
+  }, [isDarkMode]);
 
   const handleAnalyze = async (vehicle: Vehicle, data: InspectionData, mode: AnalysisMode) => {
     setIsLoading(true);
@@ -125,6 +135,8 @@ const App: React.FC = () => {
     <div className="min-h-screen pb-20">
       <Header
         currentView={currentAnalysis && showAnalysis ? 'audit' : currentView}
+        isDarkMode={isDarkMode}
+        onToggleDark={() => setIsDarkMode(d => !d)}
         onNavigate={(view) => {
           if (view === 'audit') {
             setShowAnalysis(false); // Back to form if they click "New Case"

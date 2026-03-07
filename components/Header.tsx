@@ -4,9 +4,11 @@ import React from 'react';
 interface HeaderProps {
   onNavigate: (view: 'dashboard' | 'audit' | 'admin') => void;
   currentView: string;
+  isDarkMode: boolean;
+  onToggleDark: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate, currentView }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigate, currentView, isDarkMode, onToggleDark }) => {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-50 no-print">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -20,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentView }) => {
           </div>
         </div>
 
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-4">
           <button
             onClick={() => onNavigate('dashboard')}
             className={`text-sm font-semibold transition-colors ${currentView === 'dashboard' ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'}`}
@@ -38,6 +40,18 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentView }) => {
             className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${currentView === 'audit' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
             New Case
+          </button>
+
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={onToggleDark}
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isDarkMode
+                ? 'bg-indigo-600 text-yellow-300 shadow-lg shadow-indigo-900/40'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+          >
+            <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'} text-sm`}></i>
           </button>
         </nav>
       </div>
