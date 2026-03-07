@@ -198,22 +198,47 @@ export const decodeVIN = async (vin: string): Promise<any> => {
 
 /**
  * Extracts rules from a technical standard document (PDF).
+ * Throws on failure so the caller can surface the real error to the user.
  */
 export const digestStandardDocument = async (base64: string, type: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set. Check your .env file and restart the dev server.");
+  }
+
+  const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+  if (!base64Data) {
+    throw new Error("Invalid file data. The PDF could not be read.");
+  }
+
+  // Gemini inline data cap is ~20MB. base64 is ~133% of raw size, so guard at 15MB.
+  const estimatedBytes = (base64Data.length * 3) / 4;
+  if (estimatedBytes > 20 * 1024 * 1024) {
+    throw new Error(`PDF is too large (~${Math.round(estimatedBytes / 1024 / 1024)}MB). Please compress it below 20MB and try again.`);
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       contents: {
         parts: [
-          // Use object structure for inlineData to avoid Blob naming collision
-          { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
-          { text: "You are a specialized technical auditor. Extract ALL critical pass/fail criteria, wear limits (e.g., mm, %), and regulatory safety requirements from this document. Organize them into a concise, high-density reference sheet. Focus on technical specifications that a mechanic would use to determine if a part must be replaced. Return ONLY the extracted rules as text." }
+          { inlineData: { mimeType: 'application/pdf', data: base64Data } },
+          { text: "You are a specialized technical auditor. Extract ALL critical pass/fail criteria, wear limits (e.g., mm, %), and regulatory safety requirements from this document. Organize them into a concise, high-density reference sheet. Focus on technical specifications that a mechanic would use to determine if a part must be replaced. Return ONLY the extracted rules as plain text — no preamble, no markdown headers." }
         ]
       }
     });
-    return response.text || "Failed to digest document.";
-  } catch (e) { return "Extraction error."; }
+
+    const text = response.text?.trim();
+    if (!text || text.length < 20) {
+      throw new Error("The AI returned an empty extraction. The PDF may be image-only (scanned). Please use a text-based PDF.");
+    }
+    return text;
+  } catch (e: any) {
+    const msg = e?.message || String(e);
+    console.error("digestStandardDocument failed:", msg);
+    throw new Error(msg);
+  }
 };
 
 /**
