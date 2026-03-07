@@ -16,23 +16,25 @@ YOUR MISSION: Calculate a highly accurate Reconditioning Estimate based solely o
 
 STRATEGY:
 1. AUTHORITY: The provided [DEALERSHIP RULES] are your Bible. If they specify mandatory prep items (e.g., Detail, Safety Fee, Oil Change), use those exact costs. 
-2. If [DEALERSHIP RULES] are missing or don't specify fees, use your knowledge of standard market rates for ${brand} vehicles.
-3. Analyze Appraiser Notes for specific wear items (e.g., "tires low", "brakes pulsing").
-4. If Appraiser says "CLEAN", assume zero mechanical repairs beyond the mandatory prep dictated by [DEALERSHIP RULES].
-5. Provide a clear, categorized breakdown.
-6. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end of your response.`;
+2. QUALITY PRICING: Use Google Search to find current market pricing for PREMIUM parts (e.g., Bosch, Akebono, Moog). Avoid low-end "economy" parts. 
+3. LINKED SOURCES: When providing counts or estimates, cite a legitimate source (e.g., RockAuto, PartsAvatar) with a direct link to the part if possible.
+4. Analyze Appraiser Notes for specific wear items (e.g., "tires low", "brakes pulsing").
+5. If Appraiser says "CLEAN", assume zero mechanical repairs beyond the mandatory prep dictated by [DEALERSHIP RULES].
+6. Provide a clear, categorized breakdown.
+7. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end of your response.`;
   }
 
   return `You are the Lead Auditor for a high-volume ${brand} Dealership.
 YOUR MISSION: Protect Dealership Gross Margin by identifying discrepancies between Appraiser intake notes and Technician service quotes.
 
 STRATEGIC AUDIT RULES:
-1. GROUND TRUTH AUTHORITY: The [DEALERSHIP RULES] and [${brand} RULES] provided in the prompt are the ABSOLUTE authority. They are the gospel for how this store operates.
-2. DYNAMIC PREP: Do not assume a mandatory $250 detail or $200 safety unless specified in the [DEALERSHIP RULES]. If the rules say every car gets an oil change, enforce it. If they don't, do not invent the requirement.
-3. DISCREPANCY AUDIT: If Appraiser notes a car is "Clean" but Technician quotes significant repairs, investigate if those repairs align with the [DEALERSHIP RULES] standards.
-4. VISUAL INSPECTION: Compare the visual state of the vehicle in photos against the specific standards in the [DEALERSHIP RULES].
-5. Citations: Reference specific clauses from the Ground Truth documents when flagging a variance.
-6. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end.`;
+1. GROUND TRUTH AUTHORITY: The [DEALERSHIP RULES] and [${brand} RULES] provided in the prompt are the ABSOLUTE authority. 
+2. DYNAMIC PREP: Do not assume a mandatory $250 detail or $200 safety unless specified in the [DEALERSHIP RULES].
+3. PRICING AUDIT: Use Google Search to verify Technician quotes. If the shop quotes a massive markup, find alternative PREMIUM part pricing (e.g., Akebono, Brembo, Bilstein).
+4. GROUNDING & LINKS: Ensure all findings are grounded in legitimate sources (e.g., Manufacturer CPO manuals or reputable parts retailers). Provide direct links [Label](URL) to the parts you find as alternatives.
+5. NO LOW-END PARTS: Only suggest OEM Equivalent or Premium Aftermarket options. No budget/white-box parts.
+6. VISUAL INSPECTION: Compare the visual state of the vehicle in photos against the specific standards in the [DEALERSHIP RULES].
+7. Place [DETECTED_TOTAL: 1234.56] (numeric total) at the very end.`;
 };
 
 /**
@@ -76,7 +78,7 @@ export const analyzeInspection = async (
         GROUND TRUTH RULES:
         ${relevantStandards}
 
-        GOAL: Calculate total estimated recon audit based on the provided local standards.
+        GOAL: Calculate total estimated recon audit based on the provided local standards. If you suggest parts, find 2-3 PREMIUM aftermarket options and provide direct links.
       `;
     } else {
       promptText = `
@@ -95,7 +97,7 @@ export const analyzeInspection = async (
     parts.push({ text: promptText });
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: { parts },
       config: {
         systemInstruction: getSystemInstruction(mode, brand),
@@ -140,7 +142,7 @@ export const clarifyAnalysis = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         systemInstruction: "You are the Dealer Operations Consultant. Help the manager protect their gross margin. Be concise, firm, and technically accurate."
@@ -160,7 +162,7 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: {
         parts: [
           // Use object structure for inlineData to avoid Blob naming collision
@@ -214,7 +216,7 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
   const ai = new GoogleGenAI({ apiKey });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64Data } },
@@ -242,7 +244,7 @@ export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },
@@ -272,7 +274,7 @@ export const parseServiceClaim = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },

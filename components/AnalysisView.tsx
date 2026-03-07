@@ -139,14 +139,53 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
     return text.split('\n').map((line, i) => {
       if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-black text-slate-900 mt-6 mb-3 border-b-2 border-slate-900 pb-1 uppercase tracking-tight print:text-xl">{line.substring(2)}</h1>;
       if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold text-indigo-800 mt-6 mb-2 flex items-center gap-2 print:text-sm">{line.substring(3)}</h2>;
-      if (line.startsWith('- ')) return <li key={i} className="ml-5 mb-1 text-slate-700 text-sm list-disc print:text-[10px]">{line.substring(2)}</li>;
+      if (line.startsWith('- ')) {
+        const content = line.substring(2);
+        return (
+          <li key={i} className="ml-5 mb-1 text-slate-700 text-sm list-disc print:text-[10px]">
+            {parseLinks(content)}
+          </li>
+        );
+      }
       if (line.trim() === '') return <div key={i} className="h-2"></div>;
 
       let className = "mb-2 text-sm text-slate-700 leading-relaxed print:text-[10px]";
       if (line.includes("🚨") || line.includes("DISCREPANCY")) className += " bg-red-50 border-l-4 border-red-600 p-3 rounded-r-xl font-bold";
 
-      return <p key={i} className={className}>{line}</p>;
+      return <p key={i} className={className}>{parseLinks(line)}</p>;
     });
+  };
+
+  const parseLinks = (text: string) => {
+    const parts = [];
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = linkRegex.exec(text)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      // Add the link
+      parts.push(
+        <a
+          key={match.index}
+          href={match[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-600 font-bold underline hover:text-indigo-800"
+        >
+          {match[1]}
+        </a>
+      );
+      lastIndex = linkRegex.lastIndex;
+    }
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    return parts.length > 0 ? parts : text;
   };
 
   return (
