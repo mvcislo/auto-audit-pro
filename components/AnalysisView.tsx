@@ -42,62 +42,50 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ content, citations, caseDat
     const age = currentYear - caseData.vehicle.year;
     const kms = caseData.vehicle.kilometres;
 
-    // Honda Specifics
-    if (brand === 'Honda') {
-      if (status === PostReviewStatus.HCUV) {
+    // Brand Specific CPO
+    if (status === PostReviewStatus.HCUV) {
+      if (brand === 'Honda') {
         if (age > 10) return { ok: false, reason: 'Age > 10yr' };
         if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
       }
-      if (status === PostReviewStatus.HAPO) {
-        if (age > 10) return { ok: false, reason: 'Age > 10yr' };
-        if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
-      }
-    }
-
-    // Toyota Specifics
-    if (brand === 'Toyota') {
-      if (status === PostReviewStatus.HCUV) {
+      if (brand === 'Toyota') {
         if (age > 6) return { ok: false, reason: 'Age > 6yr' };
         if (kms > 140000) return { ok: false, reason: 'KM > 140k' };
       }
-    }
-
-    // GM / CBG Specifics
-    if (brand === 'CBG' || brand === 'Cadillac') {
-      if (status === PostReviewStatus.HCUV) {
+      if (brand === 'CBG' || brand === 'Cadillac') {
         if (age > 6) return { ok: false, reason: 'Age > 6yr' };
         if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
       }
+    }
+
+    if (status === PostReviewStatus.SAFETY_STANDARD) {
+      if (age > 15) return { ok: false, reason: 'Age > 15yr' };
     }
 
     return { ok: true };
   };
 
-  const getProgramLabel = (status: PostReviewStatus) => {
-    if (brand === 'Honda') return status; // HCUV, HAPO
-    if (brand === 'Toyota') {
-      if (status === PostReviewStatus.HCUV) return 'TCUV';
-      if (status === PostReviewStatus.HAPO) return 'T-HAPO';
+  const getProgramLabel = (status: PostReviewStatus | string) => {
+    if (status === PostReviewStatus.HCUV) {
+      if (brand === 'Honda') return 'HCUV';
+      if (brand === 'Toyota') return 'TCUV';
+      if (brand === 'CBG' || brand === 'Cadillac') return 'GM Certified';
+      return 'Certified Plus';
     }
-    if (brand === 'CBG' || brand === 'Cadillac') {
-      if (status === PostReviewStatus.HCUV) return 'GM Certified';
-      if (status === PostReviewStatus.HAPO) return 'CBG Standard';
-    }
-    // Fallback for others
-    if (status === PostReviewStatus.HCUV) return 'Certified Plus';
-    if (status === PostReviewStatus.HAPO) return 'Certified Select';
+    if (status === PostReviewStatus.SAFETY_STANDARD) return 'Safety Standard';
+    if (status === PostReviewStatus.WHOLESALE) return 'Wholesale';
+    if (status === PostReviewStatus.AS_IS) return 'As-Is';
     return status;
   };
 
   const determineMoveType = (from: PostReviewStatus, to: PostReviewStatus): 'Upgrade' | 'Downgrade' | 'Lateral' => {
     const hierarchy = {
-      [PostReviewStatus.HCUV]: 4,
-      [PostReviewStatus.HAPO]: 3,
-      [PostReviewStatus.CERTIFIED]: 2,
-      [PostReviewStatus.AS_IS_RETAIL]: 1,
-      [PostReviewStatus.WHOLESALE]: 0
+      [PostReviewStatus.HCUV]: 3,
+      [PostReviewStatus.SAFETY_STANDARD]: 2,
+      [PostReviewStatus.WHOLESALE]: 1,
+      [PostReviewStatus.AS_IS]: 0
     };
-    const diff = hierarchy[to] - hierarchy[from];
+    const diff = (hierarchy[to] ?? 0) - (hierarchy[from] ?? 0);
     if (diff > 0) return 'Upgrade';
     if (diff < 0) return 'Downgrade';
     return 'Lateral';

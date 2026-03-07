@@ -76,62 +76,53 @@ const InspectionForm: React.FC<InspectionFormProps> = ({ onAnalyze, isLoading, i
     const age = currentYear - vehicle.year;
     const kms = vehicle.kilometres;
 
-    // Honda Specifics
-    if (brand === 'Honda') {
-      if (prog === InventoryProgram.HCUV) {
-        if (age > 10) return { ok: false, reason: 'Age > 10yrs' }; // Updated to modern standards
+    // Brand Specific CPO (HCUV/Brand Certified)
+    if (prog === InventoryProgram.HCUV) {
+      if (brand === 'Honda') {
+        if (age > 10) return { ok: false, reason: 'Age > 10yrs' };
         if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
       }
-      if (prog === InventoryProgram.HAPO) {
-        if (age > 10) return { ok: false, reason: 'Age > 10yrs' };
-        if (kms > 200000) return { ok: false, reason: 'KM > 200k' };
-      }
-    }
-
-    // Toyota Specifics (TCUV)
-    if (brand === 'Toyota') {
-      if (prog === InventoryProgram.HCUV) { // TCUV
+      if (brand === 'Toyota') {
         if (age > 6) return { ok: false, reason: 'Age > 6yrs' };
         if (kms > 140000) return { ok: false, reason: 'KM > 140k' };
       }
-    }
-
-    // GM / CBG Specifics
-    if (brand === 'CBG' || brand === 'Cadillac') {
-      if (prog === InventoryProgram.HCUV) { // GM Certified
+      if (brand === 'CBG' || brand === 'Cadillac') {
         if (age > 6) return { ok: false, reason: 'Age > 6yrs' };
         if (kms > 120000) return { ok: false, reason: 'KM > 120k' };
       }
+    }
+
+    // Safety Standard (Retail) usually has looser or no strict age limits unless dealer policy
+    if (prog === InventoryProgram.SAFETY_STANDARD) {
+      if (age > 15) return { ok: false, reason: 'Age > 15yrs' };
+      if (kms > 300000) return { ok: false, reason: 'KM > 300k' };
     }
 
     return { ok: true };
   };
 
   const getProgramLabel = (prog: InventoryProgram) => {
-    if (brand === 'Honda') return prog; // HCUV, HAPO
-    if (brand === 'Toyota') {
-      if (prog === InventoryProgram.HCUV) return 'TCUV';
-      if (prog === InventoryProgram.HAPO) return 'T-HAPO';
+    if (prog === InventoryProgram.HCUV) {
+      if (brand === 'Honda') return 'HCUV';
+      if (brand === 'Toyota') return 'TCUV';
+      if (brand === 'CBG' || brand === 'Cadillac') return 'GM Certified';
+      return 'Certified Plus';
     }
-    if (brand === 'CBG' || brand === 'Cadillac') {
-      if (prog === InventoryProgram.HCUV) return 'GM Certified';
-      if (prog === InventoryProgram.HAPO) return 'CBG Standard';
-    }
-    // Fallback for others
-    if (prog === InventoryProgram.HCUV) return 'Certified Plus';
-    if (prog === InventoryProgram.HAPO) return 'Certified Select';
-    return 'Certified';
+    if (prog === InventoryProgram.SAFETY_STANDARD) return 'Safety Standard';
+    if (prog === InventoryProgram.WHOLESALE) return 'Wholesale';
+    if (prog === InventoryProgram.AS_IS) return 'As-Is';
+    return prog;
   };
 
   // Automatically adjust selected program if it becomes ineligible
   useEffect(() => {
     const hcuv = checkEligibility(InventoryProgram.HCUV);
-    const hapo = checkEligibility(InventoryProgram.HAPO);
+    const safety = checkEligibility(InventoryProgram.SAFETY_STANDARD);
 
     if (data.program === InventoryProgram.HCUV && !hcuv.ok) {
-      setData(d => ({ ...d, program: hapo.ok ? InventoryProgram.HAPO : InventoryProgram.CERTIFIED }));
-    } else if (data.program === InventoryProgram.HAPO && !hapo.ok) {
-      setData(d => ({ ...d, program: InventoryProgram.CERTIFIED }));
+      setData(d => ({ ...d, program: safety.ok ? InventoryProgram.SAFETY_STANDARD : InventoryProgram.WHOLESALE }));
+    } else if (data.program === InventoryProgram.SAFETY_STANDARD && !safety.ok) {
+      setData(d => ({ ...d, program: InventoryProgram.WHOLESALE }));
     }
   }, [vehicle.year, vehicle.kilometres]);
 

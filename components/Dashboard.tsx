@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { getAllCases, deleteCase } from '../services/storageService';
-import { InspectionCase } from '../types';
+import { getAllCases, deleteCase, getBrand } from '../services/storageService';
+import { InspectionCase, PostReviewStatus, DealershipBrand } from '../types';
 
 interface DashboardProps {
   onSelectCase: (c: InspectionCase) => void;
@@ -15,6 +15,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
   const [endDate, setEndDate] = useState('');
   const [cases, setCases] = useState<InspectionCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [brand, setBrand] = useState<DealershipBrand>('Honda');
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -31,8 +32,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const casesData = await getAllCases();
+        const [casesData, currentBrand] = await Promise.all([
+          getAllCases(),
+          getBrand()
+        ]);
         setCases(casesData);
+        setBrand(currentBrand);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -115,6 +120,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
   const totalVariance = timeFilteredCases.reduce((acc, curr) => acc + ((curr.data.serviceDepartmentEstimate || 0) - (curr.data.managerAppraisalEstimate || 0)), 0);
   const avgVariance = timeFilteredCases.length ? totalVariance / timeFilteredCases.length : 0;
 
+  const getStatusLabel = (status: string) => {
+    if (status === PostReviewStatus.HCUV) {
+      if (brand === 'Honda') return 'HCUV';
+      if (brand === 'CBG' || brand === 'Cadillac') return 'GM Certified';
+      return 'Certified Plus';
+    }
+    return status;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -194,7 +208,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Program Rate</p>
           <h3 className="text-3xl font-black mt-1 text-emerald-600">
-            {Math.round((timeFilteredCases.filter(c => ['HCUV', 'HAPO', 'Certified'].includes(c.currentStatus)).length / (timeFilteredCases.length || 1)) * 100)}%
+            {Math.round((timeFilteredCases.filter(c => [PostReviewStatus.HCUV, PostReviewStatus.SAFETY_STANDARD].includes(c.currentStatus)).length / (timeFilteredCases.length || 1)) * 100)}%
           </h3>
         </div>
       </div>
@@ -260,11 +274,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCase }) => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${['HCUV', 'HAPO', 'Certified'].includes(c.currentStatus)
+                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${[PostReviewStatus.HCUV, PostReviewStatus.SAFETY_STANDARD].includes(c.currentStatus as PostReviewStatus)
                           ? 'bg-indigo-100 text-indigo-700'
-                          : c.currentStatus === 'Wholesale' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
+                          : c.currentStatus === PostReviewStatus.WHOLESALE ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
                           }`}>
-                          {c.currentStatus}
+                          {getStatusLabel(c.currentStatus)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">

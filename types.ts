@@ -7,16 +7,16 @@ export enum InspectionType {
 
 export enum InventoryProgram {
   HCUV = 'HCUV',
-  HAPO = 'HAPO',
-  CERTIFIED = 'Certified'
+  SAFETY_STANDARD = 'Safety Standard',
+  WHOLESALE = 'Wholesale',
+  AS_IS = 'As-Is'
 }
 
 export enum PostReviewStatus {
   HCUV = 'HCUV',
-  HAPO = 'HAPO',
-  CERTIFIED = 'Certified',
+  SAFETY_STANDARD = 'Safety Standard',
   WHOLESALE = 'Wholesale',
-  AS_IS_RETAIL = 'As-Is Retail'
+  AS_IS = 'As-Is'
 }
 
 export type DealershipBrand = 'Honda' | 'Toyota' | 'CBG' | 'Cadillac' | 'Ford' | 'Hyundai' | 'Nissan' | 'Other';
