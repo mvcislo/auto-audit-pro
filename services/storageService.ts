@@ -156,7 +156,11 @@ export const saveCase = async (newCase: InspectionCase) => {
       status_history: newCase.statusHistory
     });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Supabase Save Error:", error);
+    alert(`DATABASE SAVE FAILED: ${error.message}`);
+    throw error;
+  }
 };
 
 export const getAllCases = async (): Promise<InspectionCase[]> => {

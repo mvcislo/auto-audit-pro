@@ -45,10 +45,7 @@ const App: React.FC = () => {
         timestamp: Date.now(),
         mode,
         vehicle,
-        data: {
-          ...data,
-          serviceDepartmentEstimate: result.detectedTotal || data.serviceDepartmentEstimate
-        },
+        data,
         analysis: result.text,
         detectedTotal: result.detectedTotal,
         currentStatus: data.program as unknown as PostReviewStatus,
@@ -65,8 +62,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateCase = (updated: InspectionCase) => {
+  const handleUpdateCase = async (updated: InspectionCase) => {
     setActiveCase(updated);
+    try {
+      await saveCase(updated);
+    } catch (e) {
+      console.error("Error updating case:", e);
+    }
   };
 
   const handleSelectCase = (c: InspectionCase) => {
