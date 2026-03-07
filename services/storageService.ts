@@ -200,10 +200,22 @@ export const deleteCase = async (id: string): Promise<boolean> => {
   return true;
 };
 
+// Types that are brand-specific (each brand has its own copy)
+const BRAND_SPECIFIC_TYPES = ['HCUV', 'HONDA_MAINTENANCE'];
+
 export const saveStandard = async (doc: StandardDocument) => {
+  const isBrandSpecific = BRAND_SPECIFIC_TYPES.includes(doc.type);
+  const compositeKey = isBrandSpecific && doc.brand ? `${doc.type}__${doc.brand}` : doc.type;
+
   if (!supabase) {
     const standards = getLocal('standards');
-    const index = standards.findIndex((s: any) => s.type === doc.type);
+    // Match by composite key when brand-specific
+    const index = standards.findIndex((s: any) => {
+      const sKey = BRAND_SPECIFIC_TYPES.includes(s.type) && s.brand
+        ? `${s.type}__${s.brand}`
+        : s.type;
+      return sKey === compositeKey;
+    });
     if (index > -1) standards[index] = doc;
     else standards.push(doc);
     setLocal('standards', standards);
@@ -215,7 +227,7 @@ export const saveStandard = async (doc: StandardDocument) => {
     .from('standards')
     .upsert(
       {
-        type: doc.type,
+        type: compositeKey, // Store as composite key in DB
         file_name: doc.fileName,
         upload_date: uploadDate,
         extracted_rules: doc.extractedRules
@@ -239,11 +251,25 @@ export const getStandards = async (): Promise<StandardDocument[]> => {
 
   return (data || []).map(row => ({
     id: row.id,
-    type: row.type,
+    type: row.type.includes('__') ? row.type.split('__')[0] : row.type,
+    brand: row.type.includes('__') ? row.type.split('__')[1] : undefined,
     fileName: row.file_name,
     uploadDate: new Date(row.upload_date).getTime(),
     extractedRules: row.extracted_rules
   }));
+};
+
+/**
+ * Returns standards relevant to a given brand:
+ * - SAFETY and DEALERSHIP docs are global (returned for all brands)
+ * - HCUV and HONDA_MAINTENANCE docs are brand-specific
+ */
+export const getStandardsForBrand = async (brand: string): Promise<StandardDocument[]> => {
+  const all = await getStandards();
+  return all.filter(s => {
+    if (!BRAND_SPECIFIC_TYPES.includes(s.type)) return true; // Global docs
+    return s.brand === brand; // Brand-specific docs
+  });
 };
 
 /**

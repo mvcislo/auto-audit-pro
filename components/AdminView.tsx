@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { StandardDocument, DealershipBrand, Appraiser, Technician } from '../types';
 import {
   saveStandard,
-  getStandards,
+  getStandardsForBrand,
   saveBrand,
   getBrand,
   getAppraisers,
@@ -31,10 +31,11 @@ const AdminView: React.FC = () => {
   const [newTechName, setNewTechName] = useState('');
   const [newTechNum, setNewTechNum] = useState('');
 
-  const refreshData = async () => {
+  const refreshData = async (brand?: DealershipBrand) => {
+    const activeBrand = brand ?? currentBrand;
     try {
       const [s, b, a, t, h] = await Promise.all([
-        getStandards(),
+        getStandardsForBrand(activeBrand),
         getBrand(),
         getAppraisers(),
         getTechnicians(),
@@ -71,7 +72,12 @@ const AdminView: React.FC = () => {
   const handleBrandChange = async (brand: DealershipBrand) => {
     setCurrentBrand(brand);
     await saveBrand(brand);
-    const health = await getDatabaseHealth();
+    // Re-load the standards library for the newly selected brand
+    const [brandStandards, health] = await Promise.all([
+      getStandardsForBrand(brand),
+      getDatabaseHealth()
+    ]);
+    setStandards(brandStandards);
     setDbHealth(health);
   };
 
@@ -129,16 +135,19 @@ const AdminView: React.FC = () => {
     reader.onload = async () => {
       try {
         const base64 = reader.result as string;
-        console.log(`Starting digestion for ${type}...`);
+        console.log(`Starting digestion for ${type} (brand: ${currentBrand})...`);
         const extractedRules = await digestStandardDocument(base64, type);
 
         if (!extractedRules || extractedRules.length < 10) {
           throw new Error("The AI was unable to extract meaningful rules from this document. Please ensure it's a clear, text-based PDF.");
         }
 
+        // Brand-specific types are tagged with the current brand
+        const BRAND_SPECIFIC_TYPES = ['HCUV', 'HONDA_MAINTENANCE'];
         const newDoc: StandardDocument = {
           id: crypto.randomUUID(),
           type,
+          brand: BRAND_SPECIFIC_TYPES.includes(type) ? currentBrand : undefined,
           fileName: file.name,
           uploadDate: Date.now(),
           extractedRules
@@ -146,11 +155,11 @@ const AdminView: React.FC = () => {
 
         console.log("Saving standard with payload:", newDoc);
         await saveStandard(newDoc);
-        const updated = await getStandards();
+        const updated = await getStandardsForBrand(currentBrand);
         console.log(`Updated standards list from DB:`, updated);
         setStandards(updated);
-        console.log(`Successfully saved ${type} standard.`);
-        alert(`${label} processed and stored as a source of truth.`);
+        console.log(`Successfully saved ${type} standard for brand ${currentBrand}.`);
+        alert(`${label} processed and stored for ${currentBrand}.`);
       } catch (err: any) {
         console.error("Standard Upload Error:", err);
         alert(`UPLOAD FAILED (v2.1): ${err.message || "Unknown error"}. IMPORTANT: If this persists after running the SQL fix, please perform a HARD REFRESH (Ctrl + F5 or Cmd + Shift + R).`);
@@ -262,7 +271,7 @@ const AdminView: React.FC = () => {
                     </div>
                     {doc && (
                       <span className="text-[8px] font-black uppercase px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg">
-                        Knowledge Active
+                        ✓ Active — {doc.brand ?? 'Global'}
                       </span>
                     )}
                   </div>
@@ -275,7 +284,9 @@ const AdminView: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-[10px] text-slate-400 font-medium mb-4 italic flex-1">No manufacturer or regulatory document uploaded.</p>
+                    <p className="text-[10px] text-slate-400 font-medium mb-4 italic flex-1">
+                      No {item.label} uploaded for <span className="font-black text-indigo-500">{currentBrand}</span>.
+                    </p>
                   )}
 
                   <button
@@ -284,7 +295,7 @@ const AdminView: React.FC = () => {
                     className="w-full mt-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2"
                   >
                     {isProcessing ? <i className="fas fa-spinner animate-spin"></i> : <i className="fas fa-upload"></i>}
-                    {doc ? 'Update Manual' : 'Upload Manual'}
+                    {doc ? `Update ${currentBrand} Manual` : `Upload for ${currentBrand}`}
                   </button>
                   <input
                     id={`upload-${item.key}`}

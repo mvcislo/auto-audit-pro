@@ -2,7 +2,7 @@
 // Always use import {GoogleGenAI} from "@google/genai";
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { HistoricalAggregates, AnalysisMode, StandardDocument, InspectionCase, DealershipBrand } from '../types';
-import { getStandards, getTechnicianProfiles, getBrand } from './storageService';
+import { getStandardsForBrand, getTechnicianProfiles, getBrand } from './storageService';
 
 const getMimeType = (base64: string): string => {
   const match = base64.match(/^data:([^;]+);base64,/);
@@ -36,8 +36,9 @@ YOUR MISSION: Protect Dealership Gross Margin by identifying discrepancies betwe
 STRATEGIC AUDIT RULES:
 1. "CLEAN CAR" RULE: If an Appraiser notes a car is "Clean", this refers to its overall condition. It DOES NOT mean the vehicle skips the detail. Every retail unit requires a Professional Detail ($250).
 2. DISCREPANCY AUDIT: If Appraiser says "Brakes feel new" but Tech quotes "Brake Job", flag it as a potential gross leak.
-3. Citations: Reference specific manufacturer standards when flagging a failure.
-4. Place [DETECTED_TOTAL: 1234.56] at the very end.`;
+3. VISUAL INSPECTION: Analyze all attached photos. Compare the visual state of the vehicle (e.g., brake pad thickness, tire tread, rust, leaks) against the GROUND TRUTH RULES.
+4. Citations: Reference specific manufacturer standards when flagging a failure.
+5. Place [DETECTED_TOTAL: 1234.56] at the very end.`;
 };
 
 /**
@@ -66,8 +67,8 @@ export const analyzeInspection = async (
       }
     });
 
-    // Inject Ground Truth Standards (Manuals)
-    const standards = await getStandards();
+    // Inject Ground Truth Standards (brand-scoped — only this brand's manuals)
+    const standards = await getStandardsForBrand(brand);
     const relevantStandards = standards.map(s => `[${s.type} RULES]: ${s.extractedRules}`).join('\n\n');
 
     let promptText = '';
@@ -100,7 +101,7 @@ export const analyzeInspection = async (
     parts.push({ text: promptText });
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-1.5-pro',
       contents: { parts },
       config: {
         systemInstruction: getSystemInstruction(mode, brand),
@@ -145,7 +146,7 @@ export const clarifyAnalysis = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         systemInstruction: "You are the Dealer Operations Consultant. Help the manager protect their gross margin. Be concise, firm, and technically accurate."
@@ -165,7 +166,7 @@ export const extractVINFromImage = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           // Use object structure for inlineData to avoid Blob naming collision
@@ -202,7 +203,7 @@ export const digestStandardDocument = async (base64: string, type: string): Prom
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           // Use object structure for inlineData to avoid Blob naming collision
@@ -222,7 +223,7 @@ export const parseVAutoAppraisal = async (base64: string): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'application/pdf', data: base64.split(',')[1] } },

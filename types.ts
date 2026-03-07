@@ -46,6 +46,7 @@ export interface Technician {
 export interface StandardDocument {
   id: string;
   type: 'SAFETY' | 'HCUV' | 'DEALERSHIP' | 'HONDA_MAINTENANCE';
+  brand?: string; // Brand-scoped documents (brand-specific CPO / maintenance manuals)
   fileName: string;
   uploadDate: number;
   extractedRules: string;
